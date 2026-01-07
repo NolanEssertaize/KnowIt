@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useStore } from '../../store/useStore';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { GlassView } from '@/components/GlassView';
@@ -22,6 +24,7 @@ import { GlassColors, BorderRadius, Spacing, Shadows } from '@/constants/theme';
 export default function Session() {
     const { topicId } = useLocalSearchParams();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const topic = useStore((state) =>
         state.topics.find((t) => t.id === topicId)
     );
@@ -31,11 +34,9 @@ export default function Session() {
 
     const toggleRecording = async () => {
         if (isRecording) {
-            // Arrêter l'enregistrement et analyser
             setIsRecording(false);
             setIsAnalyzing(true);
 
-            // Simulation de l'analyse IA
             setTimeout(() => {
                 router.replace({
                     pathname: `/${topicId}/result`,
@@ -67,83 +68,109 @@ export default function Session() {
     }
 
     return (
-        <ScreenWrapper centered padding={Spacing.xl}>
-            {/* Header avec titre du sujet */}
-            <GlassView
-                variant="accent"
-                glow
-                glowColor={GlassColors.accent.glow}
-                style={styles.topicBanner}
-            >
-                <Text style={styles.topicLabel}>SUJET</Text>
-                <Text style={styles.topicTitle}>{topic.title}</Text>
-            </GlassView>
-
-            {/* Zone principale */}
-            <View style={styles.mainContent}>
-                {isAnalyzing ? (
-                    <View style={styles.analyzingContainer}>
-                        <GlassView style={styles.loaderCard}>
-                            <View style={styles.pulseContainer}>
-                                <ActivityIndicator size="large" color={GlassColors.accent.primary} />
-                            </View>
-                            <Text style={styles.analyzingTitle}>Analyse IA en cours...</Text>
-                            <Text style={styles.analyzingSubtitle}>
-                                Évaluation de vos connaissances
-                            </Text>
-                        </GlassView>
-                    </View>
-                ) : (
-                    <View style={styles.recordingContainer}>
-                        {/* Indicateur d'état */}
-                        <View style={styles.statusContainer}>
-                            {isRecording && (
-                                <View style={styles.recordingIndicator}>
-                                    <View style={styles.recordingDot} />
-                                    <Text style={styles.recordingText}>Enregistrement...</Text>
-                                </View>
-                            )}
-                            {!isRecording && (
-                                <Text style={styles.instructionText}>
-                                    Appuyez pour commencer à parler
-                                </Text>
-                            )}
-                        </View>
-
-                        {/* Bouton d'enregistrement */}
-                        <RecordButton
-                            isRecording={isRecording}
-                            onPress={toggleRecording}
-                            size={160}
-                        />
-
-                        {/* Instructions */}
-                        <GlassView style={styles.tipsCard}>
-                            <Text style={styles.tipsTitle}>💡 Conseil</Text>
-                            <Text style={styles.tipsText}>
-                                Expliquez le sujet comme si vous l'enseigniez à quelqu'un.
-                                L'IA analysera vos connaissances.
-                            </Text>
-                        </GlassView>
-                    </View>
-                )}
+        <ScreenWrapper useSafeArea={false} padding={0}>
+            <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => router.back()}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <MaterialIcons
+                        name="chevron-left"
+                        size={32}
+                        color={GlassColors.accent.primary}
+                    />
+                    <Text style={styles.backButtonText}>Retour</Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Bouton fermer */}
-            <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => router.back()}
-                activeOpacity={0.7}
-            >
-                <GlassView style={styles.closeButtonInner}>
-                    <Text style={styles.closeButtonText}>✕</Text>
+            <View style={styles.content}>
+                <GlassView
+                    variant="accent"
+                    glow
+                    glowColor={GlassColors.accent.glow}
+                    style={styles.topicBanner}
+                >
+                    <Text style={styles.topicLabel}>SUJET</Text>
+                    <Text style={styles.topicTitle}>{topic.title}</Text>
                 </GlassView>
-            </TouchableOpacity>
+
+                <View style={styles.mainContent}>
+                    {isAnalyzing ? (
+                        <View style={styles.analyzingContainer}>
+                            <GlassView style={styles.loaderCard}>
+                                <View style={styles.pulseContainer}>
+                                    <ActivityIndicator size="large" color={GlassColors.accent.primary} />
+                                </View>
+                                <Text style={styles.analyzingTitle}>Analyse IA en cours...</Text>
+                                <Text style={styles.analyzingSubtitle}>
+                                    Évaluation de vos connaissances
+                                </Text>
+                            </GlassView>
+                        </View>
+                    ) : (
+                        <View style={styles.recordingContainer}>
+                            <View style={styles.statusContainer}>
+                                {isRecording && (
+                                    <View style={styles.recordingIndicator}>
+                                        <View style={styles.recordingDot} />
+                                        <Text style={styles.recordingText}>Enregistrement...</Text>
+                                    </View>
+                                )}
+                                {!isRecording && (
+                                    <Text style={styles.instructionText}>
+                                        Appuyez pour commencer à parler
+                                    </Text>
+                                )}
+                            </View>
+
+                            <RecordButton
+                                isRecording={isRecording}
+                                onPress={toggleRecording}
+                                size={160}
+                            />
+
+                            {/* Instructions */}
+                            <GlassView style={styles.tipsCard}>
+                                <Text style={styles.tipsTitle}>💡 Conseil</Text>
+                                <Text style={styles.tipsText}>
+                                    Expliquez le sujet comme si vous l'enseigniez à quelqu'un.
+                                    L'IA analysera vos connaissances.
+                                </Text>
+                            </GlassView>
+                        </View>
+                    )}
+                </View>
+            </View>
         </ScreenWrapper>
     );
 }
 
 const styles = StyleSheet.create({
+    header: {
+        paddingHorizontal: Spacing.sm,
+        paddingBottom: Spacing.sm,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginLeft: -Spacing.xs,
+    },
+    backButtonText: {
+        color: GlassColors.accent.primary,
+        fontSize: 17,
+        fontWeight: '400',
+        marginLeft: -Spacing.xs,
+    },
+
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: Spacing.xl,
+    },
     topicBanner: {
         padding: Spacing.lg,
         borderRadius: BorderRadius.xl,
@@ -240,23 +267,6 @@ const styles = StyleSheet.create({
     analyzingSubtitle: {
         color: GlassColors.text.secondary,
         fontSize: 14,
-    },
-    closeButton: {
-        position: 'absolute',
-        top: Spacing.xxl,
-        right: Spacing.lg,
-    },
-    closeButtonInner: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    closeButtonText: {
-        color: GlassColors.text.secondary,
-        fontSize: 18,
-        fontWeight: '600',
     },
     errorText: {
         color: GlassColors.text.secondary,

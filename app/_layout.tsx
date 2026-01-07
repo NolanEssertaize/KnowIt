@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useStore } from '../store/useStore';
 import { GlassColors } from '@/constants/theme';
 import WelcomeScreen from '@/components/WelcomeScreen';
@@ -43,18 +44,17 @@ export default function Layout() {
         headerShown: false,
     };
 
-    // Afficher l'écran de bienvenue
     if (showWelcome) {
         return (
-            <View style={styles.container}>
+            <GestureHandlerRootView style={styles.container}>
                 <StatusBar style="light" />
                 <WelcomeScreen onFinish={() => setShowWelcome(false)} />
-            </View>
+            </GestureHandlerRootView>
         );
     }
 
     return (
-        <>
+        <GestureHandlerRootView style={styles.container}>
             <StatusBar style="light" />
             <Stack screenOptions={screenOptions}>
                 <Stack.Screen
@@ -84,7 +84,7 @@ export default function Layout() {
                     }}
                 />
             </Stack>
-        </>
+        </GestureHandlerRootView>
     );
 }
 

@@ -3,20 +3,31 @@
  * Page principale avec icônes Material (sans emojis)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
     View,
     Text,
     TextInput,
     FlatList,
-    TouchableOpacity,
     StyleSheet,
     ScrollView,
     Keyboard,
     Modal,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { TouchableOpacity } from 'react-native-gesture-handler';
+import ReanimatedSwipeable, {
+    SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Reanimated, {
+    SharedValue,
+    useAnimatedStyle,
+    interpolate,
+} from 'react-native-reanimated';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useStore } from '../store/useStore';
@@ -45,13 +56,95 @@ const CATEGORIES = [
     { id: 'progress', label: 'En cours', icon: 'trending-up' },
 ];
 
+// Largeur des boutons d'action
+const ACTION_BUTTON_WIDTH = 70;
+const ACTIONS_WIDTH = ACTION_BUTTON_WIDTH * 3;
+
+// Composant pour les actions de swipe avec Reanimated
+function RightActions({
+                          progress,
+                          drag,
+                          topicId,
+                          onEdit,
+                          onShare,
+                          onDelete,
+                      }: {
+    progress: SharedValue<number>;
+    drag: SharedValue<number>;
+    topicId: string;
+    onEdit: (id: string) => void;
+    onShare: (id: string) => void;
+    onDelete: (id: string) => void;
+}) {
+    const animatedStyle = useAnimatedStyle(() => {
+        const translateX = interpolate(
+            progress.value,
+            [0, 1],
+            [ACTIONS_WIDTH, 0]
+        );
+        const opacity = interpolate(
+            progress.value,
+            [0, 0.5, 1],
+            [0, 0.5, 1]
+        );
+        return {
+            transform: [{ translateX }],
+            opacity,
+        };
+    });
+
+    return (
+        <Reanimated.View style={[styles.actionsContainer, animatedStyle]}>
+            {/* Bouton Éditer */}
+            <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => onEdit(topicId)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.actionButtonInner}>
+                    <MaterialIcons name="edit" size={22} color={GlassColors.accent.primary} />
+                    <Text style={styles.actionButtonText}>Éditer</Text>
+                </View>
+            </TouchableOpacity>
+
+            {/* Bouton Partager */}
+            <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => onShare(topicId)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.actionButtonInner}>
+                    <MaterialIcons name="share" size={22} color={GlassColors.accent.primary} />
+                    <Text style={styles.actionButtonText}>Partager</Text>
+                </View>
+            </TouchableOpacity>
+
+            {/* Bouton Supprimer */}
+            <TouchableOpacity
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => onDelete(topicId)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.actionButtonInner}>
+                    <MaterialIcons name="delete" size={22} color="#FFFFFF" />
+                    <Text style={styles.deleteButtonText}>Supprimer</Text>
+                </View>
+            </TouchableOpacity>
+        </Reanimated.View>
+    );
+}
+
 export default function TopicsList() {
     const [searchText, setSearchText] = useState('');
     const [newTopicText, setNewTopicText] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
     const { topics, addTopic } = useStore();
     const router = useRouter();
+
+    // Ref pour gérer les swipeables ouverts
+    const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
     // Obtenir la salutation selon l'heure
     const getGreeting = () => {
@@ -94,6 +187,47 @@ export default function TopicsList() {
         Keyboard.dismiss();
     };
 
+    // Fermer tous les swipeables ouverts
+    const closeAllSwipeables = useCallback((exceptId?: string) => {
+        swipeableRefs.current.forEach((ref, id) => {
+            if (id !== exceptId) {
+                ref.close();
+            }
+        });
+        if (!exceptId) {
+            setOpenSwipeableId(null);
+        }
+    }, []);
+
+    // Gérer le tap sur une carte
+    const handleCardPress = useCallback((topicId: string) => {
+        // Si un swipeable est ouvert, le fermer au lieu de naviguer
+        if (openSwipeableId) {
+            closeAllSwipeables();
+            return;
+        }
+        router.push(`/${topicId}`);
+    }, [openSwipeableId, closeAllSwipeables, router]);
+
+    // Actions handlers (à implémenter plus tard)
+    const handleEdit = useCallback((topicId: string) => {
+        console.log('Edit topic:', topicId);
+        closeAllSwipeables();
+        // TODO: Implémenter l'édition
+    }, [closeAllSwipeables]);
+
+    const handleShare = useCallback((topicId: string) => {
+        console.log('Share topic:', topicId);
+        closeAllSwipeables();
+        // TODO: Implémenter le partage
+    }, [closeAllSwipeables]);
+
+    const handleDelete = useCallback((topicId: string) => {
+        console.log('Delete topic:', topicId);
+        closeAllSwipeables();
+        // TODO: Implémenter la suppression
+    }, [closeAllSwipeables]);
+
     const totalSessions = topics.reduce((acc, t) => acc + t.sessions.length, 0);
 
     const renderHeader = () => (
@@ -112,7 +246,7 @@ export default function TopicsList() {
                     </View>
                     <Text style={styles.userName}>Prêt à apprendre ?</Text>
                 </View>
-                <TouchableOpacity
+                <Pressable
                     style={styles.profileButton}
                     onPress={() => setShowAddModal(true)}
                 >
@@ -122,7 +256,7 @@ export default function TopicsList() {
                     >
                         <MaterialIcons name="add" size={28} color={GlassColors.text.primary} />
                     </LinearGradient>
-                </TouchableOpacity>
+                </Pressable>
             </View>
 
             {/* Stats rapides */}
@@ -155,9 +289,9 @@ export default function TopicsList() {
                     onChangeText={setSearchText}
                 />
                 {searchText.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchText('')}>
+                    <Pressable onPress={() => setSearchText('')}>
                         <MaterialIcons name="close" size={20} color={GlassColors.text.tertiary} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
             </GlassView>
 
@@ -168,10 +302,9 @@ export default function TopicsList() {
                 contentContainerStyle={styles.categoriesContainer}
             >
                 {CATEGORIES.map((cat) => (
-                    <TouchableOpacity
+                    <Pressable
                         key={cat.id}
                         onPress={() => setSelectedCategory(cat.id)}
-                        activeOpacity={0.7}
                     >
                         {selectedCategory === cat.id ? (
                             <LinearGradient
@@ -197,7 +330,7 @@ export default function TopicsList() {
                                 <Text style={styles.categoryLabel}>{cat.label}</Text>
                             </GlassView>
                         )}
-                    </TouchableOpacity>
+                    </Pressable>
                 ))}
             </ScrollView>
 
@@ -206,6 +339,11 @@ export default function TopicsList() {
                 <Text style={styles.sectionTitle}>Mes Sujets</Text>
                 <Text style={styles.sectionCount}>{filteredTopics.length} sujets</Text>
             </View>
+
+            {/* Indication de swipe */}
+            <Text style={styles.swipeHint}>
+                ← Glissez pour plus d'options
+            </Text>
         </View>
     );
 
@@ -220,79 +358,112 @@ export default function TopicsList() {
             : 'Jamais';
 
         return (
-            <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => router.push(`/${item.id}`)}
-                style={styles.topicCardWrapper}
-            >
-                <GlassCard style={styles.topicCard}>
-                    <View style={styles.topicContent}>
-                        {/* Icône avec gradient */}
-                        <LinearGradient
-                            colors={theme.gradient as [string, string]}
-                            style={styles.topicIconContainer}
-                        >
-                            <MaterialCommunityIcons
-                                name={theme.icon as any}
-                                size={26}
-                                color="#FFFFFF"
-                            />
-                        </LinearGradient>
+            <View style={styles.topicCardWrapper}>
+                <ReanimatedSwipeable
+                    ref={(ref) => {
+                        if (ref) {
+                            swipeableRefs.current.set(item.id, ref);
+                        } else {
+                            swipeableRefs.current.delete(item.id);
+                        }
+                    }}
+                    renderRightActions={(progress, drag) => (
+                        <RightActions
+                            progress={progress}
+                            drag={drag}
+                            topicId={item.id}
+                            onEdit={handleEdit}
+                            onShare={handleShare}
+                            onDelete={handleDelete}
+                        />
+                    )}
+                    onSwipeableWillOpen={() => {
+                        closeAllSwipeables(item.id);
+                        setOpenSwipeableId(item.id);
+                    }}
+                    onSwipeableClose={() => {
+                        if (openSwipeableId === item.id) {
+                            setOpenSwipeableId(null);
+                        }
+                    }}
+                    overshootRight={false}
+                    friction={2}
+                    rightThreshold={40}
+                >
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handleCardPress(item.id)}
+                    >
+                        <GlassCard style={styles.topicCard}>
+                            <View style={styles.topicContent}>
+                                {/* Icône avec gradient */}
+                                <LinearGradient
+                                    colors={theme.gradient as [string, string]}
+                                    style={styles.topicIconContainer}
+                                >
+                                    <MaterialCommunityIcons
+                                        name={theme.icon as any}
+                                        size={26}
+                                        color="#FFFFFF"
+                                    />
+                                </LinearGradient>
 
-                        {/* Infos du topic */}
-                        <View style={styles.topicInfo}>
-                            <Text style={styles.topicTitle} numberOfLines={1}>
-                                {item.title}
-                            </Text>
-                            <View style={styles.topicMeta}>
-                                <View style={styles.metaItem}>
-                                    <MaterialCommunityIcons
-                                        name="text-box-outline"
-                                        size={14}
-                                        color={GlassColors.text.secondary}
-                                    />
-                                    <Text style={styles.metaText}>
-                                        {item.sessions.length} session{item.sessions.length !== 1 ? 's' : ''}
+                                {/* Infos du topic */}
+                                <View style={styles.topicInfo}>
+                                    <Text style={styles.topicTitle} numberOfLines={1}>
+                                        {item.title}
                                     </Text>
+                                    <View style={styles.topicMeta}>
+                                        <View style={styles.metaItem}>
+                                            <MaterialCommunityIcons
+                                                name="text-box-outline"
+                                                size={14}
+                                                color={GlassColors.text.secondary}
+                                            />
+                                            <Text style={styles.metaText}>
+                                                {item.sessions.length} session{item.sessions.length !== 1 ? 's' : ''}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.metaDot} />
+                                        <View style={styles.metaItem}>
+                                            <MaterialCommunityIcons
+                                                name="clock-outline"
+                                                size={14}
+                                                color={GlassColors.text.secondary}
+                                            />
+                                            <Text style={styles.metaText}>{lastDate}</Text>
+                                        </View>
+                                    </View>
                                 </View>
-                                <View style={styles.metaDot} />
-                                <View style={styles.metaItem}>
-                                    <MaterialCommunityIcons
-                                        name="clock-outline"
-                                        size={14}
-                                        color={GlassColors.text.secondary}
+
+                                {/* Chevron */}
+                                <View style={styles.chevronContainer}>
+                                    <MaterialIcons
+                                        name="chevron-right"
+                                        size={24}
+                                        color={GlassColors.accent.primary}
                                     />
-                                    <Text style={styles.metaText}>{lastDate}</Text>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* Chevron */}
-                        <View style={styles.chevronContainer}>
-                            <MaterialIcons
-                                name="chevron-right"
-                                size={24}
-                                color={GlassColors.accent.primary}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Barre de progression */}
-                    <View style={styles.progressBarContainer}>
-                        <View style={styles.progressBarBg}>
-                            <LinearGradient
-                                colors={theme.gradient as [string, string]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={[
-                                    styles.progressBarFill,
-                                    { width: `${Math.min(item.sessions.length * 20, 100)}%` },
-                                ]}
-                            />
-                        </View>
-                    </View>
-                </GlassCard>
-            </TouchableOpacity>
+                            {/* Barre de progression */}
+                            <View style={styles.progressBarContainer}>
+                                <View style={styles.progressBarBg}>
+                                    <LinearGradient
+                                        colors={theme.gradient as [string, string]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[
+                                            styles.progressBarFill,
+                                            { width: `${Math.min(item.sessions.length * 20, 100)}%` },
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                        </GlassCard>
+                    </TouchableOpacity>
+                </ReanimatedSwipeable>
+            </View>
         );
     };
 
@@ -320,7 +491,7 @@ export default function TopicsList() {
         </View>
     );
 
-    // Modal d'ajout
+    // Modal d'ajout avec glassmorphism amélioré et gestion du clavier
     const renderAddModal = () => (
         <Modal
             visible={showAddModal}
@@ -328,64 +499,79 @@ export default function TopicsList() {
             animationType="fade"
             onRequestClose={() => setShowAddModal(false)}
         >
-            <View style={styles.modalOverlay}>
-                <TouchableOpacity
-                    style={styles.modalBackdrop}
-                    activeOpacity={1}
-                    onPress={() => setShowAddModal(false)}
-                />
-                <GlassView style={styles.modalContent} variant="light">
-                    <View style={styles.modalHeader}>
-                        <View style={styles.modalIconContainer}>
-                            <LinearGradient
-                                colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
-                                style={styles.modalIconGradient}
-                            >
-                                <MaterialCommunityIcons name="book-plus" size={28} color="#FFF" />
-                            </LinearGradient>
-                        </View>
-                        <Text style={styles.modalTitle}>Nouveau Sujet</Text>
-                        <Text style={styles.modalSubtitle}>
-                            Quel sujet souhaitez-vous apprendre ?
-                        </Text>
-                    </View>
-
-                    <GlassView style={styles.modalInputContainer}>
-                        <MaterialCommunityIcons
-                            name="text"
-                            size={20}
-                            color={GlassColors.text.tertiary}
-                            style={styles.modalInputIcon}
-                        />
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Ex: React Native, Photoshop..."
-                            placeholderTextColor={GlassColors.text.tertiary}
-                            value={newTopicText}
-                            onChangeText={setNewTopicText}
-                            autoFocus
-                            onSubmitEditing={handleAddTopic}
-                        />
-                    </GlassView>
-
-                    <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                            style={styles.modalCancelButton}
-                            onPress={() => setShowAddModal(false)}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.modalKeyboardAvoid}
+            >
+                <View style={styles.modalOverlay}>
+                    <Pressable
+                        style={styles.modalBackdrop}
+                        onPress={() => setShowAddModal(false)}
+                    />
+                    <View style={styles.modalContent}>
+                        {/* Fond avec glassmorphism amélioré */}
+                        <LinearGradient
+                            colors={['rgba(30, 41, 59, 0.98)', 'rgba(15, 23, 42, 0.98)']}
+                            style={styles.modalGradient}
                         >
-                            <Text style={styles.modalCancelText}>Annuler</Text>
-                        </TouchableOpacity>
-                        <GlassButton
-                            title="Ajouter"
-                            variant="primary"
-                            size="md"
-                            onPress={handleAddTopic}
-                            disabled={!newTopicText.trim()}
-                            style={styles.modalAddButton}
-                        />
+                            {/* Overlay glass effect */}
+                            <View style={styles.modalGlassOverlay} />
+
+                            <View style={styles.modalInner}>
+                                <View style={styles.modalHeader}>
+                                    <View style={styles.modalIconContainer}>
+                                        <LinearGradient
+                                            colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
+                                            style={styles.modalIconGradient}
+                                        >
+                                            <MaterialCommunityIcons name="book-plus" size={28} color="#FFF" />
+                                        </LinearGradient>
+                                    </View>
+                                    <Text style={styles.modalTitle}>Nouveau Sujet</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        Quel sujet souhaitez-vous apprendre ?
+                                    </Text>
+                                </View>
+
+                                <View style={styles.modalInputContainer}>
+                                    <MaterialCommunityIcons
+                                        name="text"
+                                        size={20}
+                                        color={GlassColors.text.tertiary}
+                                        style={styles.modalInputIcon}
+                                    />
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="Ex: React Native, Photoshop..."
+                                        placeholderTextColor={GlassColors.text.tertiary}
+                                        value={newTopicText}
+                                        onChangeText={setNewTopicText}
+                                        autoFocus
+                                        onSubmitEditing={handleAddTopic}
+                                    />
+                                </View>
+
+                                <View style={styles.modalButtons}>
+                                    <Pressable
+                                        style={styles.modalCancelButton}
+                                        onPress={() => setShowAddModal(false)}
+                                    >
+                                        <Text style={styles.modalCancelText}>Annuler</Text>
+                                    </Pressable>
+                                    <GlassButton
+                                        title="Ajouter"
+                                        variant="primary"
+                                        size="md"
+                                        onPress={handleAddTopic}
+                                        disabled={!newTopicText.trim()}
+                                        style={styles.modalAddButton}
+                                    />
+                                </View>
+                            </View>
+                        </LinearGradient>
                     </View>
-                </GlassView>
-            </View>
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 
@@ -527,7 +713,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.xs,
     },
     sectionTitle: {
         color: GlassColors.text.primary,
@@ -537,6 +723,11 @@ const styles = StyleSheet.create({
     sectionCount: {
         color: GlassColors.text.secondary,
         fontSize: 14,
+    },
+    swipeHint: {
+        color: GlassColors.text.tertiary,
+        fontSize: 12,
+        marginBottom: Spacing.md,
     },
 
     // Topic Cards
@@ -612,6 +803,43 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
 
+    // Swipe Actions
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: Spacing.sm,
+    },
+    actionButton: {
+        width: ACTION_BUTTON_WIDTH,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+        borderRadius: BorderRadius.md,
+        marginHorizontal: 2,
+    },
+    actionButtonInner: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Spacing.sm,
+    },
+    actionButtonText: {
+        color: GlassColors.accent.primary,
+        fontSize: 11,
+        fontWeight: '500',
+        marginTop: 4,
+    },
+    deleteButton: {
+        backgroundColor: GlassColors.semantic.error,
+        borderRadius: BorderRadius.md,
+    },
+    deleteButtonText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 4,
+    },
+
     // Empty State
     emptyContainer: {
         flex: 1,
@@ -646,21 +874,42 @@ const styles = StyleSheet.create({
         minWidth: 180,
     },
 
-    // Modal
+    // Modal - Amélioré avec meilleur glassmorphism et gestion du clavier
+    modalKeyboardAvoid: {
+        flex: 1,
+    },
     modalOverlay: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingBottom: Platform.OS === 'ios' ? 20 : 40,
     },
     modalBackdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
     },
     modalContent: {
-        width: '85%',
-        maxWidth: 360,
-        padding: Spacing.xl,
+        marginHorizontal: Spacing.lg,
         borderRadius: BorderRadius.xl,
+        overflow: 'hidden',
+        // Ombre pour effet de profondeur
+        shadowColor: GlassColors.accent.primary,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    modalGradient: {
+        borderRadius: BorderRadius.xl,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    modalGlassOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: BorderRadius.xl,
+    },
+    modalInner: {
+        padding: Spacing.xl,
     },
     modalHeader: {
         alignItems: 'center',
@@ -691,7 +940,10 @@ const styles = StyleSheet.create({
     modalInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.12)',
         marginBottom: Spacing.lg,
         paddingHorizontal: Spacing.md,
     },
@@ -713,6 +965,10 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     modalCancelText: {
         color: GlassColors.text.secondary,
