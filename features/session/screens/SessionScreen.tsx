@@ -2,6 +2,8 @@
  * @file SessionScreen.tsx
  * @description Écran d'enregistrement vocal avec animation réactive
  * Version mise à jour avec VoiceRecordButton et useAudioRecording
+ *
+ * CORRECTION: GlassColors.neon.primary → GlassColors.accent.primary
  */
 
 import React, { memo, useCallback } from 'react';
@@ -10,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScreenWrapper, GlassView } from '@/shared/components';
+import { ScreenWrapper } from '@/shared/components';
 import { GlassColors, Spacing, BorderRadius } from '@/theme';
 
 import { VoiceRecordButton } from '../components/VoiceRecordButton';
@@ -67,42 +69,22 @@ export const SessionScreen = memo(function SessionScreen() {
                                 color={GlassColors.text.primary}
                             />
                         </Pressable>
-                        <Text style={styles.headerTitle}>Session</Text>
-                        <View style={styles.placeholder} />
+                        <Text style={styles.topicTitle} numberOfLines={1}>
+                            {logic.topic.title}
+                        </Text>
+                        <View style={styles.headerSpacer} />
                     </View>
 
-                    {/* Content */}
+                    {/* Main Content */}
                     <View style={styles.content}>
-                        {/* Topic Badge */}
-                        <GlassView style={styles.topicBadge} borderRadius="full">
-                            <Text style={styles.topicTitle}>{logic.topic.title}</Text>
-                        </GlassView>
-
-                        {/* Permission Error */}
-                        {logic.error && (
-                            <View style={styles.errorContainer}>
-                                <MaterialIcons
-                                    name="mic-off"
-                                    size={24}
-                                    color={GlassColors.semantic.error}
-                                />
-                                <Text style={styles.errorMessage}>{logic.error}</Text>
-                                <Pressable
-                                    style={styles.retryButton}
-                                    onPress={logic.requestPermission}
-                                >
-                                    <Text style={styles.retryButtonText}>Autoriser le micro</Text>
-                                </Pressable>
-                            </View>
-                        )}
-
-                        {/* Status */}
+                        {/* État d'analyse */}
                         {logic.isAnalyzing ? (
                             <View style={styles.analyzingContainer}>
+                                {/* CORRECTION: GlassColors.neon.primary → GlassColors.accent.primary */}
                                 <ActivityIndicator size="large" color={GlassColors.accent.primary} />
                                 <Text style={styles.analyzingText}>Analyse en cours...</Text>
                                 <Text style={styles.analyzingHint}>
-                                    Traitement de votre enregistrement
+                                    Nous transcrivons et analysons votre réponse
                                 </Text>
                             </View>
                         ) : (
@@ -110,7 +92,7 @@ export const SessionScreen = memo(function SessionScreen() {
                                 {/* Status Text */}
                                 <View style={styles.statusContainer}>
                                     <Text style={styles.statusText}>
-                                        {logic.isRecording ? 'Enregistrement...' : 'Prêt à enregistrer'}
+                                        {logic.isRecording ? '🔴 Enregistrement...' : 'Prêt à enregistrer'}
                                     </Text>
                                     <Text style={styles.statusHint}>
                                         {logic.isRecording
@@ -139,20 +121,59 @@ export const SessionScreen = memo(function SessionScreen() {
                                     />
                                 </View>
 
-                                {/* Audio Level Indicator (Visual feedback) */}
+                                {/* Audio Level Indicator - AMÉLIORÉ ET PLUS VISIBLE */}
                                 {logic.isRecording && (
                                     <View style={styles.levelIndicatorContainer}>
+                                        {/* Label */}
+                                        <View style={styles.levelLabelRow}>
+                                            <Text style={styles.levelLabel}>NIVEAU AUDIO</Text>
+                                            <Text style={[
+                                                styles.levelPercentage,
+                                                { color: logic.audioLevel < 0.3
+                                                        ? GlassColors.semantic.warning
+                                                        : GlassColors.semantic.success }
+                                            ]}>
+                                                {Math.round(logic.audioLevel * 100)}%
+                                            </Text>
+                                        </View>
+
+                                        {/* Barre de progression */}
                                         <View style={styles.levelBarBackground}>
-                                            <View
+                                            <LinearGradient
+                                                colors={
+                                                    logic.audioLevel < 0.3
+                                                        ? [GlassColors.semantic.warning, GlassColors.semantic.warningGlow]
+                                                        : logic.audioLevel < 0.7
+                                                            ? [GlassColors.semantic.success, GlassColors.semantic.successGlow]
+                                                            : [GlassColors.semantic.error, GlassColors.semantic.errorGlow]
+                                                }
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 0 }}
                                                 style={[
                                                     styles.levelBarFill,
-                                                    { width: `${logic.audioLevel * 100}%` }
+                                                    { width: `${Math.max(2, logic.audioLevel * 100)}%` }
                                                 ]}
                                             />
                                         </View>
-                                        <Text style={styles.levelText}>
-                                            Niveau: {Math.round(logic.audioLevel * 100)}%
+
+                                        {/* Feedback textuel */}
+                                        <Text style={styles.levelFeedback}>
+                                            {logic.audioLevel < 0.1
+                                                ? '🔇 Parlez plus fort'
+                                                : logic.audioLevel < 0.3
+                                                    ? '🎤 Niveau faible'
+                                                    : logic.audioLevel < 0.7
+                                                        ? '✅ Bon niveau'
+                                                        : '🔊 Très fort'}
                                         </Text>
+                                    </View>
+                                )}
+
+                                {/* Afficher l'erreur si présente */}
+                                {logic.error && (
+                                    <View style={styles.errorContainer}>
+                                        <MaterialIcons name="error-outline" size={20} color={GlassColors.semantic.error} />
+                                        <Text style={styles.errorMessage}>{logic.error}</Text>
                                     </View>
                                 )}
 
@@ -199,37 +220,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    headerTitle: {
+    topicTitle: {
+        flex: 1,
         fontSize: 18,
         fontWeight: '600',
         color: GlassColors.text.primary,
+        textAlign: 'center',
+        marginHorizontal: Spacing.md,
     },
-    placeholder: {
+    headerSpacer: {
         width: 40,
     },
     content: {
         flex: 1,
         alignItems: 'center',
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Spacing.xl,
-    },
-    topicBadge: {
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.sm,
-        marginBottom: Spacing.xl,
-    },
-    topicTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: GlassColors.text.primary,
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.xl,
     },
     statusContainer: {
         alignItems: 'center',
         marginBottom: Spacing.lg,
     },
     statusText: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: 22,
+        fontWeight: '700',
         color: GlassColors.text.primary,
         marginBottom: Spacing.xs,
     },
@@ -257,13 +271,54 @@ const styles = StyleSheet.create({
         fontVariant: ['tabular-nums'],
     },
     recordButtonContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
         marginVertical: Spacing.xl,
     },
+    // ═══════════════════════════════════════════════════════════════
+    // INDICATEUR DE NIVEAU AUDIO - STYLES AMÉLIORÉS
+    // ═══════════════════════════════════════════════════════════════
+    levelIndicatorContainer: {
+        width: '100%',
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+        backgroundColor: GlassColors.glass.backgroundDark,
+        borderRadius: BorderRadius.lg,
+        marginTop: Spacing.md,
+    },
+    levelLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    levelLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: GlassColors.text.tertiary,
+        letterSpacing: 1,
+    },
+    levelPercentage: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        letterSpacing: -1,
+    },
+    levelBarBackground: {
+        height: 16,
+        backgroundColor: GlassColors.glass.background,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    levelBarFill: {
+        height: '100%',
+        borderRadius: 8,
+    },
+    levelFeedback: {
+        fontSize: 14,
+        color: GlassColors.text.secondary,
+        textAlign: 'center',
+        marginTop: Spacing.sm,
+    },
+    // ═══════════════════════════════════════════════════════════════
     analyzingContainer: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -277,64 +332,34 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: GlassColors.text.secondary,
         marginTop: Spacing.sm,
-    },
-    errorText: {
-        fontSize: 16,
-        color: GlassColors.semantic.error,
-    },
-    errorContainer: {
-        alignItems: 'center',
-        padding: Spacing.lg,
-        marginBottom: Spacing.lg,
-    },
-    errorMessage: {
-        fontSize: 14,
-        color: GlassColors.semantic.error,
-        marginTop: Spacing.sm,
         textAlign: 'center',
     },
-    retryButton: {
-        marginTop: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.sm,
-        backgroundColor: GlassColors.accent.primary,
-        borderRadius: BorderRadius.md,
-    },
-    retryButtonText: {
-        color: GlassColors.text.primary,
-        fontWeight: '600',
-    },
-    levelIndicatorContainer: {
+    errorContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
-        width: '80%',
-        marginTop: Spacing.lg,
+        backgroundColor: GlassColors.semantic.errorGlow,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginTop: Spacing.md,
     },
-    levelBarBackground: {
-        width: '100%',
-        height: 4,
-        backgroundColor: GlassColors.glass.background,
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    levelBarFill: {
-        height: '100%',
-        backgroundColor: GlassColors.accent.primary,
-        borderRadius: 2,
-    },
-    levelText: {
-        fontSize: 12,
-        color: GlassColors.text.tertiary,
-        marginTop: Spacing.xs,
+    errorMessage: {
+        color: GlassColors.semantic.error,
+        fontSize: 14,
+        marginLeft: Spacing.sm,
     },
     instructionsContainer: {
-        position: 'absolute',
-        bottom: Spacing.xxl,
+        marginTop: Spacing.xl,
         paddingHorizontal: Spacing.lg,
     },
     instructionText: {
         fontSize: 14,
         color: GlassColors.text.secondary,
         textAlign: 'center',
+    },
+    errorText: {
+        fontSize: 18,
+        color: GlassColors.text.primary,
     },
 });
 

@@ -1,11 +1,14 @@
 /**
  * @file useAudioRecording.ts
  * @description Hook pour gérer l'enregistrement audio avec analyse d'intensité
- * Utilise expo-audio (nouvelle API remplaçant expo-av)
+ * Version corrigée avec metering fonctionnel via expo-av
+ *
+ * IMPORTANT: expo-audio (nouvelle API) a des problèmes avec currentMetering
+ * On utilise expo-av qui fonctionne mieux pour le metering en temps réel
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
+import { Audio } from 'expo-av';
 import type { RecordingState } from '@/types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -47,18 +50,51 @@ export interface UseAudioRecordingReturn {
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Intervalle de mise à jour du niveau audio (ms)
+/**
+ * Options d'enregistrement avec metering activé
+ * CRITIQUE: isMeteringEnabled doit être à true pour avoir les niveaux audio
+ */
+const AUDIO_RECORDING_OPTIONS: Audio.RecordingOptions = {
+    isMeteringEnabled: true, // ⚠️ OBLIGATOIRE pour le niveau audio
+    android: {
+        extension: '.m4a',
+        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+        audioEncoder: Audio.AndroidAudioEncoder.AAC,
+        sampleRate: 44100,
+        numberOfChannels: 1, // Mono pour meilleure détection vocale
+        bitRate: 128000,
+    },
+    ios: {
+        extension: '.m4a',
+        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+        audioQuality: Audio.IOSAudioQuality.HIGH,
+        sampleRate: 44100,
+        numberOfChannels: 1, // Mono pour meilleure détection vocale
+        bitRate: 128000,
+        linearPCMBitDepth: 16,
+        linearPCMIsBigEndian: false,
+        linearPCMIsFloat: false,
+    },
+    web: {
+        mimeType: 'audio/webm',
+        bitsPerSecond: 128000,
+    },
+};
+
+// Intervalle de mise à jour du niveau audio (ms) - 50ms = 20 updates/sec
 const METERING_INTERVAL = 50;
 
-// Lissage exponentiel pour le niveau audio
-const SMOOTHING_FACTOR = 0.3;
+// Lissage exponentiel pour le niveau audio (0.3 = réactif, 0.1 = lisse)
+const SMOOTHING_FACTOR = 0.4;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function useAudioRecording(): UseAudioRecordingReturn {
-    // États
+    // ─────────────────────────────────────────────────────────────────────────
+    // ÉTATS
+    // ─────────────────────────────────────────────────────────────────────────
     const [recordingState, setRecordingState] = useState<RecordingState>('idle');
     const [audioLevel, setAudioLevel] = useState(0);
     const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -66,16 +102,15 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     const [hasPermission, setHasPermission] = useState(false);
     const [duration, setDuration] = useState(0);
 
-    // Expo Audio Recorder Hook
-    const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-
-    // Refs pour éviter les problèmes de closure et appels multiples
-    const isRecordingRef = useRef(false);
-    const isProcessingRef = useRef(false); // Protection contre appels multiples
+    // ─────────────────────────────────────────────────────────────────────────
+    // REFS
+    // ─────────────────────────────────────────────────────────────────────────
+    const recordingRef = useRef<Audio.Recording | null>(null);
     const meteringIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const smoothedLevelRef = useRef(0);
     const startTimeRef = useRef<number>(0);
     const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const isRecordingRef = useRef(false); // Pour éviter les problèmes de closure
 
     // Derived states
     const isRecording = recordingState === 'recording';
@@ -88,8 +123,8 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     const requestPermission = useCallback(async (): Promise<boolean> => {
         try {
             console.log('[useAudioRecording] Requesting permission...');
-            const status = await AudioModule.requestRecordingPermissionsAsync();
-            const granted = status.granted;
+            const { status } = await Audio.requestPermissionsAsync();
+            const granted = status === 'granted';
             setHasPermission(granted);
 
             if (!granted) {
@@ -111,8 +146,8 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     useEffect(() => {
         const checkPermission = async () => {
             try {
-                const status = await AudioModule.getRecordingPermissionsAsync();
-                setHasPermission(status.granted);
+                const { status } = await Audio.getPermissionsAsync();
+                setHasPermission(status === 'granted');
             } catch (err) {
                 console.error('[useAudioRecording] Check permission error:', err);
             }
@@ -121,46 +156,70 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     }, []);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // METERING (Niveau audio)
+    // METERING (Niveau audio) - VERSION CORRIGÉE
     // ─────────────────────────────────────────────────────────────────────────
 
     const startMetering = useCallback(() => {
+        console.log('[useAudioRecording] Starting metering...');
+
         // Nettoyer l'intervalle existant
         if (meteringIntervalRef.current) {
             clearInterval(meteringIntervalRef.current);
         }
 
-        meteringIntervalRef.current = setInterval(() => {
-            // Utiliser notre ref au lieu de audioRecorder.isRecording
-            if (isRecordingRef.current) {
-                try {
-                    // Récupérer le niveau de metering depuis le recorder
-                    const metering = audioRecorder.currentMetering;
+        // Reset le niveau lissé
+        smoothedLevelRef.current = 0;
 
-                    if (metering !== undefined && metering !== null) {
-                        // Convertir les dB en valeur normalisée (0-1)
-                        const db = metering;
-                        const minDb = -60;
-                        const maxDb = 0;
+        meteringIntervalRef.current = setInterval(async () => {
+            // Utiliser la ref pour vérifier l'état
+            if (!isRecordingRef.current || !recordingRef.current) {
+                return;
+            }
 
-                        let normalizedLevel = (db - minDb) / (maxDb - minDb);
-                        normalizedLevel = Math.max(0, Math.min(1, normalizedLevel));
-                        normalizedLevel = Math.pow(normalizedLevel, 0.7);
+            try {
+                const status = await recordingRef.current.getStatusAsync();
 
-                        smoothedLevelRef.current =
-                            smoothedLevelRef.current * (1 - SMOOTHING_FACTOR) +
-                            normalizedLevel * SMOOTHING_FACTOR;
+                // Debug: afficher le status complet
+                // console.log('[useAudioRecording] Status:', JSON.stringify(status));
 
-                        setAudioLevel(smoothedLevelRef.current);
-                    }
-                } catch (err) {
-                    console.debug('[useAudioRecording] Metering error:', err);
+                if (status.isRecording && status.metering !== undefined && status.metering !== null) {
+                    // Convertir les dB en valeur normalisée (0-1)
+                    // Les valeurs de metering sont généralement entre -160 et 0 dB
+                    // -60dB = très silencieux, 0dB = maximum
+                    const db = status.metering;
+                    const minDb = -50; // Seuil minimum (ajusté pour être plus sensible)
+                    const maxDb = -5;  // Maximum pratique (la voix normale atteint rarement 0dB)
+
+                    // Normaliser entre 0 et 1
+                    let normalizedLevel = (db - minDb) / (maxDb - minDb);
+                    normalizedLevel = Math.max(0, Math.min(1, normalizedLevel));
+
+                    // Appliquer une courbe pour plus de sensibilité aux voix normales
+                    // Exposant < 1 = plus sensible aux niveaux bas
+                    normalizedLevel = Math.pow(normalizedLevel, 0.6);
+
+                    // Lissage exponentiel pour éviter les saccades
+                    smoothedLevelRef.current =
+                        smoothedLevelRef.current * (1 - SMOOTHING_FACTOR) +
+                        normalizedLevel * SMOOTHING_FACTOR;
+
+                    setAudioLevel(smoothedLevelRef.current);
+
+                    // Debug log occasionnel
+                    // console.log(`[useAudioRecording] Level: ${db.toFixed(1)}dB -> ${(smoothedLevelRef.current * 100).toFixed(0)}%`);
+                } else {
+                    console.log('[useAudioRecording] No metering data available, status.metering:', status.metering);
                 }
+            } catch (err) {
+                // Ignorer les erreurs silencieusement pendant l'enregistrement
+                // (peut arriver pendant l'arrêt)
+                console.debug('[useAudioRecording] Metering error (ignoré):', err);
             }
         }, METERING_INTERVAL);
-    }, [audioRecorder]);
+    }, []);
 
     const stopMetering = useCallback(() => {
+        console.log('[useAudioRecording] Stopping metering...');
         if (meteringIntervalRef.current) {
             clearInterval(meteringIntervalRef.current);
             meteringIntervalRef.current = null;
@@ -195,13 +254,11 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     // ─────────────────────────────────────────────────────────────────────────
 
     const startRecording = useCallback(async () => {
-        // Protection contre appels multiples
-        if (isProcessingRef.current || isRecordingRef.current) {
-            console.log('[useAudioRecording] Already recording or processing, ignoring start');
+        // Protection contre les appels multiples
+        if (isRecordingRef.current) {
+            console.log('[useAudioRecording] Already recording, ignoring start');
             return;
         }
-
-        isProcessingRef.current = true;
 
         try {
             setError(null);
@@ -210,96 +267,95 @@ export function useAudioRecording(): UseAudioRecordingReturn {
             // Vérifier/demander les permissions
             if (!hasPermission) {
                 const granted = await requestPermission();
-                if (!granted) {
-                    isProcessingRef.current = false;
-                    return;
-                }
+                if (!granted) return;
             }
 
-            // Configurer le mode audio pour iOS (OBLIGATOIRE avant d'enregistrer)
-            await AudioModule.setAudioModeAsync({
-                allowsRecording: true,
-                playsInSilentMode: true,
+            // Configurer le mode audio (OBLIGATOIRE sur iOS)
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: false,
+                shouldDuckAndroid: true,
+                playThroughEarpieceAndroid: false,
             });
 
-            // Démarrer l'enregistrement avec expo-audio
-            audioRecorder.record();
+            // Créer et démarrer l'enregistrement avec les bonnes options
+            // Le 3ème paramètre est l'intervalle de mise à jour du status en ms
+            const { recording } = await Audio.Recording.createAsync(
+                AUDIO_RECORDING_OPTIONS,
+                undefined, // onRecordingStatusUpdate - on utilise notre propre polling
+                METERING_INTERVAL // progressUpdateIntervalMillis
+            );
 
-            // Marquer comme en cours d'enregistrement
+            recordingRef.current = recording;
             isRecordingRef.current = true;
             setRecordingState('recording');
             setAudioUri(null);
 
-            // Démarrer le monitoring
+            // Démarrer le monitoring du niveau audio
             startMetering();
             startDurationTracking();
 
-            console.log('[useAudioRecording] Recording started');
+            console.log('[useAudioRecording] Recording started successfully');
         } catch (err) {
             console.error('[useAudioRecording] Start error:', err);
-            setError('Erreur lors du démarrage de l\'enregistrement');
+            setError("Erreur lors du démarrage de l'enregistrement");
             setRecordingState('idle');
             isRecordingRef.current = false;
-        } finally {
-            isProcessingRef.current = false;
         }
-    }, [hasPermission, requestPermission, audioRecorder, startMetering, startDurationTracking]);
+    }, [hasPermission, requestPermission, startMetering, startDurationTracking]);
 
     const stopRecording = useCallback(async (): Promise<string | null> => {
-        // Protection contre appels multiples - utiliser notre ref
-        if (isProcessingRef.current) {
-            console.log('[useAudioRecording] Already processing, ignoring stop');
-            return null;
-        }
-
         if (!isRecordingRef.current) {
-            console.warn('[useAudioRecording] Not recording, ignoring stop');
+            console.log('[useAudioRecording] Not recording, ignoring stop');
             return null;
         }
-
-        isProcessingRef.current = true;
 
         try {
             console.log('[useAudioRecording] Stopping recording...');
+
+            // Marquer comme arrêté immédiatement pour éviter les lectures de status
+            isRecordingRef.current = false;
 
             // Arrêter le monitoring
             stopMetering();
             stopDurationTracking();
 
-            // Marquer immédiatement comme arrêté pour éviter les doubles appels
-            isRecordingRef.current = false;
+            if (!recordingRef.current) {
+                console.warn('[useAudioRecording] No recording to stop');
+                setRecordingState('idle');
+                return null;
+            }
 
-            // Arrêter l'enregistrement
-            await audioRecorder.stop();
+            // Arrêter et décharger l'enregistrement
+            await recordingRef.current.stopAndUnloadAsync();
 
             // Récupérer l'URI
-            const uri = audioRecorder.uri;
+            const uri = recordingRef.current.getURI();
+            recordingRef.current = null;
 
-            // Réinitialiser le mode audio iOS
-            await AudioModule.setAudioModeAsync({
-                allowsRecording: false,
-                playsInSilentMode: true,
+            // Réinitialiser le mode audio
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
             });
 
             console.log('[useAudioRecording] Recording stopped, URI:', uri);
 
-            setAudioUri(uri ?? null);
+            setAudioUri(uri);
             setRecordingState('idle');
 
-            return uri ?? null;
+            return uri;
         } catch (err) {
             console.error('[useAudioRecording] Stop error:', err);
-            setError('Erreur lors de l\'arrêt de l\'enregistrement');
+            setError("Erreur lors de l'arrêt de l'enregistrement");
             setRecordingState('idle');
             isRecordingRef.current = false;
             return null;
-        } finally {
-            isProcessingRef.current = false;
         }
-    }, [audioRecorder, stopMetering, stopDurationTracking]);
+    }, [stopMetering, stopDurationTracking]);
 
     const toggleRecording = useCallback(async () => {
-        // Utiliser la ref pour une vérification fiable
         if (isRecordingRef.current) {
             await stopRecording();
         } else {
@@ -310,8 +366,13 @@ export function useAudioRecording(): UseAudioRecordingReturn {
     const reset = useCallback(() => {
         stopMetering();
         stopDurationTracking();
+
+        if (recordingRef.current) {
+            recordingRef.current.stopAndUnloadAsync().catch(() => {});
+            recordingRef.current = null;
+        }
+
         isRecordingRef.current = false;
-        isProcessingRef.current = false;
         setRecordingState('idle');
         setAudioLevel(0);
         setAudioUri(null);
@@ -325,22 +386,21 @@ export function useAudioRecording(): UseAudioRecordingReturn {
 
     useEffect(() => {
         return () => {
-            // Nettoyer les intervalles
-            if (meteringIntervalRef.current) {
-                clearInterval(meteringIntervalRef.current);
-            }
-            if (durationIntervalRef.current) {
-                clearInterval(durationIntervalRef.current);
+            console.log('[useAudioRecording] Cleanup on unmount');
+            stopMetering();
+            stopDurationTracking();
+
+            if (recordingRef.current) {
+                recordingRef.current.stopAndUnloadAsync().catch(() => {});
             }
         };
-    }, []);
+    }, [stopMetering, stopDurationTracking]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // RETURN
     // ─────────────────────────────────────────────────────────────────────────
 
     return {
-        // State
         recordingState,
         audioLevel,
         isRecording,
@@ -349,8 +409,6 @@ export function useAudioRecording(): UseAudioRecordingReturn {
         error,
         hasPermission,
         duration,
-
-        // Actions
         startRecording,
         stopRecording,
         toggleRecording,
