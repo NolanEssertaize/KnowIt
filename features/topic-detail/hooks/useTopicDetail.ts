@@ -1,73 +1,144 @@
 /**
  * @file useTopicDetail.ts
- * @description Logic Controller pour l'écran de détail d'un topic
+ * @description Topic Detail Hook - Business logic for TopicDetailScreen
+ * 
+ * Pattern: MVVM - This hook serves as the ViewModel for topic detail view
  */
 
-import { useMemo, useCallback } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useStore, selectTopicById } from '@/store/useStore';
-import type { Topic, Session } from '@/types';
-import { formatDateFull } from '@/shared/utils/dateUtils';
+import { useCallback, useEffect, useState } from 'react';
+import { useStore, selectCurrentTopic, selectIsLoading, selectError } from '@/store';
+import type { Topic, Session } from '@/store';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
-export interface SessionItemData {
-  session: Session;
-  formattedDate: string;
-}
-
-export interface UseTopicDetailReturn {
-  // Data
-  topic: Topic | undefined;
-  sessions: SessionItemData[];
+interface UseTopicDetailReturn {
+  // State
+  topic: Topic | null;
+  sessions: Session[];
   isLoading: boolean;
-
-  // Methods
-  handleStartSession: () => void;
-  handleNavigateBack: () => void;
+  error: string | null;
+  isEditModalVisible: boolean;
+  editTitle: string;
+  
+  // Actions
+  loadTopicDetail: (topicId: string) => Promise<Topic | null>;
+  refreshTopic: () => Promise<void>;
+  handleUpdateTitle: () => Promise<void>;
+  handleDeleteTopic: () => Promise<void>;
+  setEditTitle: (title: string) => void;
+  showEditModal: () => void;
+  hideEditModal: () => void;
+  clearError: () => void;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HOOK
-// ═══════════════════════════════════════════════════════════════════════════
+export function useTopicDetail(topicId: string): UseTopicDetailReturn {
+  // Local state for edit modal
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
 
-export function useTopicDetail(): UseTopicDetailReturn {
-  const { topicId } = useLocalSearchParams<{ topicId: string }>();
-  const router = useRouter();
+  // Store state and actions
+  const topic = useStore(selectCurrentTopic);
+  const isLoading = useStore(selectIsLoading);
+  const error = useStore(selectError);
+  const {
+    loadTopicDetail: loadTopicDetailFromStore,
+    updateTopicTitle,
+    deleteTopic,
+    clearError: clearStoreError,
+  } = useStore();
 
-  const topic = useStore(selectTopicById(topicId ?? ''));
+  // Derived state
+  const sessions = topic?.sessions || [];
 
-  // Sessions enrichies
-  const sessions = useMemo((): SessionItemData[] => {
-    if (!topic) return [];
+  // Load topic detail on mount or when topicId changes
+  useEffect(() => {
+    if (topicId) {
+      loadTopicDetailFromStore(topicId);
+    }
+  }, [topicId, loadTopicDetailFromStore]);
 
-    return topic.sessions.map((session) => ({
-      session,
-      formattedDate: formatDateFull(session.date),
-    }));
+  /**
+   * Load topic detail from API
+   */
+  const loadTopicDetail = useCallback(async (id: string): Promise<Topic | null> => {
+    return await loadTopicDetailFromStore(id);
+  }, [loadTopicDetailFromStore]);
+
+  /**
+   * Refresh current topic
+   */
+  const refreshTopic = useCallback(async () => {
+    if (topicId) {
+      await loadTopicDetailFromStore(topicId);
+    }
+  }, [topicId, loadTopicDetailFromStore]);
+
+  /**
+   * Update topic title
+   */
+  const handleUpdateTitle = useCallback(async () => {
+    if (!topic || !editTitle.trim()) {
+      return;
+    }
+
+    console.log('[useTopicDetail] Updating title to:', editTitle);
+    
+    try {
+      await updateTopicTitle(topic.id, editTitle);
+      setIsEditModalVisible(false);
+    } catch (error) {
+      console.error('[useTopicDetail] Failed to update title:', error);
+    }
+  }, [topic, editTitle, updateTopicTitle]);
+
+  /**
+   * Delete current topic
+   */
+  const handleDeleteTopic = useCallback(async () => {
+    if (!topic) return;
+
+    console.log('[useTopicDetail] Deleting topic:', topic.id);
+    await deleteTopic(topic.id);
+  }, [topic, deleteTopic]);
+
+  /**
+   * Show edit modal
+   */
+  const showEditModal = useCallback(() => {
+    setEditTitle(topic?.title || '');
+    setIsEditModalVisible(true);
   }, [topic]);
 
-  // Handlers
-  const handleStartSession = useCallback(() => {
-    if (topicId) {
-      router.push(`/${topicId}/session`);
-    }
-  }, [topicId, router]);
+  /**
+   * Hide edit modal
+   */
+  const hideEditModal = useCallback(() => {
+    setIsEditModalVisible(false);
+    setEditTitle('');
+  }, []);
 
-  const handleNavigateBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  /**
+   * Clear error state
+   */
+  const clearError = useCallback(() => {
+    clearStoreError();
+  }, [clearStoreError]);
 
   return {
-    // Data
+    // State
     topic,
     sessions,
-    isLoading: false,
+    isLoading,
+    error,
+    isEditModalVisible,
+    editTitle,
 
-    // Methods
-    handleStartSession,
-    handleNavigateBack,
+    // Actions
+    loadTopicDetail,
+    refreshTopic,
+    handleUpdateTitle,
+    handleDeleteTopic,
+    setEditTitle,
+    showEditModal,
+    hideEditModal,
+    clearError,
   };
 }
