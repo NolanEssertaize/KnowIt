@@ -1,10 +1,12 @@
 /**
  * @file TopicsListScreen.tsx
  * @description Écran principal - Liste des sujets (Vue Dumb)
+ *
+ * FIX: Added loading state and pull-to-refresh support
  */
 
 import React, { memo, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, Pressable } from 'react-native';
+import { View, Text, TextInput, FlatList, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -45,14 +47,31 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                 {/* Indication de swipe */}
                 <View style={styles.swipeHintContainer}>
                     <MaterialIcons name="swipe" size={14} color={GlassColors.text.tertiary} />
-                    <Text style={styles.swipeHint}>Glissez pour plus d'options</Text>
+                    <Text style={styles.swipeHint}>
+                        Glissez pour plus d'options
+                    </Text>
                 </View>
+
+                {/* Indicateur de filtres actifs */}
+                {logic.hasActiveFilters && (
+                    <Pressable onPress={logic.resetFilters} style={styles.activeFiltersBar}>
+                        <Text style={styles.activeFiltersText}>
+                            Filtres actifs
+                        </Text>
+                        <MaterialCommunityIcons
+                            name="close-circle"
+                            size={16}
+                            color={GlassColors.accent.primary}
+                        />
+                    </Pressable>
+                )}
             </View>
         ),
-        [logic.filteredTopics.length]
+        [logic.filteredTopics.length, logic.hasActiveFilters, logic.resetFilters]
     );
 
-    const renderTopic = useCallback(
+    // Render topic card
+    const renderTopicCard = useCallback(
         ({ item }: { item: TopicItemData }) => (
             <TopicCard
                 data={item}
@@ -64,58 +83,91 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                 unregisterRef={() => logic.unregisterSwipeableRef(item.topic.id)}
             />
         ),
-        [logic.handleCardPress, logic.handleEdit, logic.handleShare, logic.handleDelete, logic.registerSwipeableRef, logic.unregisterSwipeableRef]
+        [
+            logic.handleCardPress,
+            logic.handleEdit,
+            logic.handleShare,
+            logic.handleDelete,
+            logic.registerSwipeableRef,
+            logic.unregisterSwipeableRef,
+        ]
     );
 
-    const renderEmpty = useCallback(
+    // Empty state component
+    const renderEmptyState = useCallback(
         () => (
             <View style={styles.emptyContainer}>
-                {logic.hasActiveFilters ? (
-                    // État vide avec filtres actifs
+                {logic.isLoading ? (
+                    <>
+                        <ActivityIndicator
+                            size="large"
+                            color={GlassColors.accent.primary}
+                            style={styles.emptyIcon}
+                        />
+                        <Text style={styles.emptyTitle}>Chargement...</Text>
+                        <Text style={styles.emptySubtitle}>
+                            Synchronisation de vos sujets
+                        </Text>
+                    </>
+                ) : logic.error ? (
                     <>
                         <MaterialCommunityIcons
-                            name="filter-off-outline"
+                            name="alert-circle-outline"
+                            size={64}
+                            color={GlassColors.semantic.error}
+                            style={styles.emptyIcon}
+                        />
+                        <Text style={styles.emptyTitle}>Erreur</Text>
+                        <Text style={styles.emptySubtitle}>{logic.error}</Text>
+                        <GlassButton
+                            title="Réessayer"
+                            onPress={logic.refreshTopics}
+                            variant="primary"
+                            style={styles.retryButton}
+                        />
+                    </>
+                ) : logic.hasActiveFilters ? (
+                    <>
+                        <MaterialCommunityIcons
+                            name="magnify-close"
                             size={64}
                             color={GlassColors.text.tertiary}
                             style={styles.emptyIcon}
                         />
-                        <Text style={styles.emptyTitle}>Aucun sujet avec ces filtres</Text>
+                        <Text style={styles.emptyTitle}>Aucun résultat</Text>
                         <Text style={styles.emptySubtitle}>
-                            Essayez de modifier vos critères de recherche
+                            Aucun sujet ne correspond à votre recherche
                         </Text>
                         <GlassButton
-                            title="Réinitialiser les filtres"
-                            variant="secondary"
-                            size="md"
+                            title="Effacer les filtres"
                             onPress={logic.resetFilters}
-                            style={styles.resetButton}
-                            icon={
-                                <MaterialIcons
-                                    name="refresh"
-                                    size={18}
-                                    color={GlassColors.text.primary}
-                                />
-                            }
+                            variant="secondary"
+                            style={styles.retryButton}
                         />
                     </>
                 ) : (
-                    // État vide sans filtres (pas de sujets du tout)
                     <>
-                        <MaterialCommunityIcons
-                            name="book-open-page-variant-outline"
-                            size={64}
-                            color={GlassColors.text.tertiary}
+                        <LinearGradient
+                            colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
                             style={styles.emptyIcon}
-                        />
-                        <Text style={styles.emptyTitle}>Aucun sujet</Text>
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <MaterialCommunityIcons
+                                name="book-plus-multiple"
+                                size={64}
+                                color={GlassColors.text.primary}
+                            />
+                        </LinearGradient>
+                        <Text style={styles.emptyTitle}>Commencez à apprendre</Text>
                         <Text style={styles.emptySubtitle}>
-                            Créez votre premier sujet pour commencer à réviser
+                            Créez votre premier sujet pour démarrer vos révisions
                         </Text>
                     </>
                 )}
             </View>
         ),
-        [logic.hasActiveFilters, logic.resetFilters]
+        [logic.isLoading, logic.error, logic.hasActiveFilters, logic.resetFilters, logic.refreshTopics]
     );
 
     const keyExtractor = useCallback((item: TopicItemData) => item.topic.id, []);
@@ -167,23 +219,12 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                             <Text style={styles.statLabel}>Sessions</Text>
                         </View>
                     </GlassView>
-                    <GlassView style={styles.statCard}>
-                        <MaterialCommunityIcons
-                            name="fire"
-                            size={24}
-                            color={GlassColors.semantic.warning}
-                        />
-                        <View>
-                            <Text style={styles.statNumber}>0</Text>
-                            <Text style={styles.statLabel}>Streak</Text>
-                        </View>
-                    </GlassView>
                 </View>
 
-                {/* Barre de recherche - Isolée pour éviter les re-renders */}
+                {/* Recherche */}
                 <GlassView style={styles.searchContainer}>
-                    <MaterialIcons
-                        name="search"
+                    <MaterialCommunityIcons
+                        name="magnify"
                         size={22}
                         color={GlassColors.text.tertiary}
                     />
@@ -193,17 +234,11 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                         placeholderTextColor={GlassColors.text.tertiary}
                         value={logic.searchText}
                         onChangeText={logic.setSearchText}
-                        autoCorrect={false}
-                        autoCapitalize="none"
-                        returnKeyType="search"
                     />
                     {logic.searchText.length > 0 && (
-                        <Pressable
-                            onPress={() => logic.setSearchText('')}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <MaterialIcons
-                                name="close"
+                        <Pressable onPress={() => logic.setSearchText('')}>
+                            <MaterialCommunityIcons
+                                name="close-circle"
                                 size={20}
                                 color={GlassColors.text.tertiary}
                             />
@@ -211,43 +246,58 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                     )}
                 </GlassView>
 
-                {/* Catégories */}
+                {/* Filtres par catégorie */}
                 <CategoryFilter
                     selectedCategory={logic.selectedCategory}
                     onSelectCategory={logic.setSelectedCategory}
                 />
             </View>
 
-            {/* Liste */}
+            {/* Liste des topics avec pull-to-refresh */}
             <FlatList
                 data={logic.filteredTopics}
                 keyExtractor={keyExtractor}
-                renderItem={renderTopic}
+                renderItem={renderTopicCard}
                 ListHeaderComponent={renderListHeader}
-                ListEmptyComponent={renderEmpty}
+                ListEmptyComponent={renderEmptyState}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={logic.isLoading}
+                        onRefresh={logic.refreshTopics}
+                        tintColor={GlassColors.accent.primary}
+                        colors={[GlassColors.accent.primary]}
+                    />
+                }
             />
 
-            {/* FAB */}
-            <View style={styles.fab}>
-                <Pressable onPress={() => logic.setShowAddModal(true)}>
-                    <LinearGradient
-                        colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
-                        style={styles.fabGradient}
-                    >
-                        <MaterialIcons name="add" size={28} color="#FFFFFF" />
-                    </LinearGradient>
-                </Pressable>
-            </View>
+            {/* FAB pour ajouter un topic */}
+            <Pressable
+                style={styles.fabContainer}
+                onPress={() => logic.setShowAddModal(true)}
+            >
+                <LinearGradient
+                    colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.fabGradient}
+                >
+                    <MaterialCommunityIcons
+                        name="plus"
+                        size={28}
+                        color={GlassColors.text.primary}
+                    />
+                </LinearGradient>
+            </Pressable>
 
             {/* Modal d'ajout */}
             <AddTopicModal
                 visible={logic.showAddModal}
+                onClose={() => logic.setShowAddModal(false)}
+                onAdd={logic.handleAddTopic}
                 value={logic.newTopicText}
                 onChangeText={logic.setNewTopicText}
-                onSubmit={logic.handleAddTopic}
-                onClose={() => logic.setShowAddModal(false)}
             />
         </ScreenWrapper>
     );

@@ -1,6 +1,8 @@
 /**
  * @file TopicsListScreen.styles.ts
  * @description Styles pour l'écran de liste des topics
+ *
+ * FIX: Added styles for loading state, error state, and retry button
  */
 
 import { StyleSheet } from 'react-native';
@@ -116,39 +118,65 @@ export const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
 
+    // Active filters bar
+    activeFiltersBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        borderRadius: BorderRadius.md,
+        marginBottom: Spacing.sm,
+    },
+    activeFiltersText: {
+        fontSize: 12,
+        color: GlassColors.accent.primary,
+        fontWeight: '500',
+    },
+
     // Empty state
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: Spacing.xxl,
+        paddingHorizontal: Spacing.lg,
     },
     emptyIcon: {
         marginBottom: Spacing.lg,
         opacity: 0.8,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
     },
     emptyTitle: {
         fontSize: 20,
         fontWeight: '600',
         color: GlassColors.text.primary,
         marginBottom: Spacing.sm,
+        textAlign: 'center',
     },
     emptySubtitle: {
         fontSize: 14,
         color: GlassColors.text.secondary,
         textAlign: 'center',
-        paddingHorizontal: Spacing.xl,
-        marginBottom: Spacing.lg,
-    },
-    resetButton: {
-        marginTop: Spacing.md,
+        lineHeight: 20,
+        maxWidth: 280,
     },
 
-    // FAB
-    fab: {
+    // Retry button (for error state)
+    retryButton: {
+        marginTop: Spacing.lg,
+        minWidth: 160,
+    },
+
+    // FAB (Floating Action Button)
+    fabContainer: {
         position: 'absolute',
         bottom: Spacing.xl,
         right: Spacing.lg,
+        ...Shadows.medium,
     },
     fabGradient: {
         width: 60,
@@ -156,39 +184,12 @@ export const styles = StyleSheet.create({
         borderRadius: 30,
         alignItems: 'center',
         justifyContent: 'center',
-        ...Shadows.glass,
     },
 
-    // Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: GlassColors.gradient.middle,
-        borderTopLeftRadius: BorderRadius.xl,
-        borderTopRightRadius: BorderRadius.xl,
-        padding: Spacing.lg,
-        paddingBottom: Spacing.xxl,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: Spacing.lg,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: GlassColors.text.primary,
-    },
-    modalInputContainer: {
-        marginBottom: Spacing.lg,
-    },
-    modalInput: {
+    // Error text
+    errorText: {
         fontSize: 16,
-        color: GlassColors.text.primary,
-        padding: Spacing.md,
+        color: GlassColors.semantic.error,
+        textAlign: 'center',
     },
 });

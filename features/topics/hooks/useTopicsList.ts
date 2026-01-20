@@ -1,13 +1,15 @@
 /**
  * @file useTopicsList.ts
  * @description Logic Controller pour l'écran de liste des topics
+ *
+ * FIX: Added useEffect to load topics on mount for synchronization
  */
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { useStore, selectTopics } from '@/store/useStore';
+import { useStore, selectTopics, selectIsLoading, selectError } from '@/store/useStore';
 import type { Topic, TopicTheme, TopicCategory } from '@/types';
 import { formatDateRelative } from '@/shared/utils/dateUtils';
 
@@ -53,6 +55,8 @@ export interface UseTopicsListReturn {
     topicsCount: number;
     greeting: string;
     hasActiveFilters: boolean;
+    isLoading: boolean;
+    error: string | null;
 
     // Methods
     setSearchText: (text: string) => void;
@@ -68,6 +72,7 @@ export interface UseTopicsListReturn {
     registerSwipeableRef: (id: string, ref: SwipeableMethods) => void;
     unregisterSwipeableRef: (id: string) => void;
     resetFilters: () => void;
+    refreshTopics: () => Promise<void>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -96,8 +101,14 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export function useTopicsList(): UseTopicsListReturn {
     const router = useRouter();
+
+    // Store state
     const topics = useStore(selectTopics);
-    const { addTopic, deleteTopic } = useStore();
+    const isLoading = useStore(selectIsLoading);
+    const error = useStore(selectError);
+
+    // Store actions
+    const { addTopic, deleteTopic, loadTopics } = useStore();
 
     // État local
     const [searchText, setSearchText] = useState('');
@@ -111,6 +122,18 @@ export function useTopicsList(): UseTopicsListReturn {
 
     // Refs pour les swipeables
     const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FIX: Load topics on mount to sync with API
+    // ─────────────────────────────────────────────────────────────────────────
+    useEffect(() => {
+        console.log('[useTopicsList] Loading topics on mount...');
+        loadTopics();
+    }, [loadTopics]);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MEMOIZED VALUES
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Vérifier si des filtres sont actifs
     const hasActiveFilters = useMemo(() => {
@@ -160,13 +183,23 @@ export function useTopicsList(): UseTopicsListReturn {
         [topics]
     );
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // HANDLERS
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Réinitialiser les filtres
     const resetFilters = useCallback(() => {
         setSearchText('');
         setSelectedCategory('all');
     }, []);
 
-    // Handlers
+    // Refresh topics from API
+    const refreshTopics = useCallback(async () => {
+        console.log('[useTopicsList] Refreshing topics...');
+        await loadTopics();
+    }, [loadTopics]);
+
+    // Add topic handler
     const handleAddTopic = useCallback(() => {
         const trimmed = newTopicText.trim();
         if (!trimmed) return;
@@ -177,6 +210,7 @@ export function useTopicsList(): UseTopicsListReturn {
         Keyboard.dismiss();
     }, [newTopicText, addTopic]);
 
+    // Close all swipeables
     const closeAllSwipeables = useCallback((exceptId?: string) => {
         swipeableRefs.current.forEach((ref, id) => {
             if (id !== exceptId) {
@@ -188,6 +222,7 @@ export function useTopicsList(): UseTopicsListReturn {
         }
     }, []);
 
+    // Card press handler
     const handleCardPress = useCallback(
         (topicId: string) => {
             if (openSwipeableId) {
@@ -199,6 +234,7 @@ export function useTopicsList(): UseTopicsListReturn {
         [openSwipeableId, closeAllSwipeables, router]
     );
 
+    // Edit handler
     const handleEdit = useCallback(
         (topicId: string) => {
             console.log('Edit topic:', topicId);
@@ -208,6 +244,7 @@ export function useTopicsList(): UseTopicsListReturn {
         [closeAllSwipeables]
     );
 
+    // Share handler
     const handleShare = useCallback(
         (topicId: string) => {
             console.log('Share topic:', topicId);
@@ -217,6 +254,7 @@ export function useTopicsList(): UseTopicsListReturn {
         [closeAllSwipeables]
     );
 
+    // Delete handler
     const handleDelete = useCallback(
         (topicId: string) => {
             deleteTopic(topicId);
@@ -225,6 +263,7 @@ export function useTopicsList(): UseTopicsListReturn {
         [deleteTopic, closeAllSwipeables]
     );
 
+    // Swipeable ref management
     const registerSwipeableRef = useCallback((id: string, ref: SwipeableMethods) => {
         swipeableRefs.current.set(id, ref);
     }, []);
@@ -232,6 +271,10 @@ export function useTopicsList(): UseTopicsListReturn {
     const unregisterSwipeableRef = useCallback((id: string) => {
         swipeableRefs.current.delete(id);
     }, []);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RETURN
+    // ─────────────────────────────────────────────────────────────────────────
 
     return {
         // Data
@@ -244,6 +287,8 @@ export function useTopicsList(): UseTopicsListReturn {
         topicsCount: topics.length,
         greeting,
         hasActiveFilters,
+        isLoading,
+        error,
 
         // Methods
         setSearchText,
@@ -259,5 +304,6 @@ export function useTopicsList(): UseTopicsListReturn {
         registerSwipeableRef,
         unregisterSwipeableRef,
         resetFilters,
+        refreshTopics,
     };
 }

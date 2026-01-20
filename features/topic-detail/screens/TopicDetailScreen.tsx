@@ -1,15 +1,19 @@
 /**
  * @file TopicDetailScreen.tsx
  * @description Écran de détail d'un topic (Vue Dumb)
+ *
+ * FIX: Added useLocalSearchParams to get topicId from route and pass it to useTopicDetail
  */
 
 import React, { memo, useCallback } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ScreenWrapper, GlassView, GlassButton } from '@/shared/components';
 import { GlassColors } from '@/theme';
 
-import { useTopicDetail, type SessionItemData } from '../hooks/useTopicDetail';
+import { useTopicDetail } from '../hooks/useTopicDetail';
+import type { SessionItemData } from '../hooks/useTopicDetail';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
 import { styles } from './TopicDetailScreen.styles';
 
@@ -18,16 +22,59 @@ import { styles } from './TopicDetailScreen.styles';
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TopicDetailScreen = memo(function TopicDetailScreen() {
-    // Setup Hook - Logic Controller
-    const logic = useTopicDetail();
+    // ─────────────────────────────────────────────────────────────────────────
+    // FIX: Get topicId from route params
+    // ─────────────────────────────────────────────────────────────────────────
+    const { topicId } = useLocalSearchParams<{ topicId: string }>();
+
+    // Setup Hook - Logic Controller (pass topicId)
+    const logic = useTopicDetail(topicId ?? '');
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GUARD: Loading state
+    // ─────────────────────────────────────────────────────────────────────────
+    if (logic.isLoading && !logic.topic) {
+        return (
+            <ScreenWrapper centered>
+                <ActivityIndicator size="large" color={GlassColors.accent.primary} />
+                <Text style={styles.loadingText}>Chargement...</Text>
+            </ScreenWrapper>
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GUARD: Error state
+    // ─────────────────────────────────────────────────────────────────────────
+    if (logic.error && !logic.topic) {
+        return (
+            <ScreenWrapper centered>
+                <MaterialCommunityIcons
+                    name="alert-circle-outline"
+                    size={64}
+                    color={GlassColors.semantic.error}
+                />
+                <Text style={styles.errorText}>{logic.error}</Text>
+                <GlassButton
+                    title="Réessayer"
+                    onPress={logic.refreshTopic}
+                    variant="primary"
+                    style={styles.retryButton}
+                />
+            </ScreenWrapper>
+        );
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // GUARD: Topic not found
     // ─────────────────────────────────────────────────────────────────────────
-
     if (!logic.topic) {
         return (
             <ScreenWrapper centered>
+                <MaterialCommunityIcons
+                    name="book-off-outline"
+                    size={64}
+                    color={GlassColors.text.tertiary}
+                />
                 <Text style={styles.errorText}>Topic introuvable</Text>
             </ScreenWrapper>
         );
@@ -54,47 +101,37 @@ export const TopicDetailScreen = memo(function TopicDetailScreen() {
                     </Text>
                 </GlassView>
 
-                <GlassButton
-                    title="Démarrer une session"
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    onPress={logic.handleStartSession}
-                    style={styles.startButton}
-                    icon={
-                        <MaterialCommunityIcons
-                            name="microphone"
-                            size={20}
-                            color="#FFFFFF"
-                        />
-                    }
-                />
-
-                {logic.sessions.length > 0 && (
-                    <Text style={styles.sectionTitle}>Historique</Text>
-                )}
+                {/* Section title */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Historique des sessions</Text>
+                </View>
             </View>
         ),
-        [logic]
+        [logic.topic?.title, logic.sessions.length]
     );
 
-    const renderSession = useCallback(
-        ({ item }: { item: SessionItemData }) => <SessionHistoryCard data={item} />,
+    const renderSessionCard = useCallback(
+        ({ item }: { item: SessionItemData }) => (
+            <SessionHistoryCard
+                session={item.session}
+                formattedDate={item.formattedDate}
+            />
+        ),
         []
     );
 
-    const renderEmpty = useCallback(
+    const renderEmptyState = useCallback(
         () => (
             <View style={styles.emptyContainer}>
                 <MaterialCommunityIcons
-                    name="microphone-outline"
+                    name="microphone-off"
                     size={64}
                     color={GlassColors.text.tertiary}
                     style={styles.emptyIcon}
                 />
                 <Text style={styles.emptyTitle}>Aucune session</Text>
                 <Text style={styles.emptySubtitle}>
-                    Démarrez votre première session pour commencer à réviser ce sujet
+                    Commencez une session d'enregistrement pour tester vos connaissances
                 </Text>
             </View>
         ),
@@ -106,23 +143,56 @@ export const TopicDetailScreen = memo(function TopicDetailScreen() {
         []
     );
 
-    const renderSeparator = useCallback(() => <View style={styles.separator} />, []);
+    // Prepare sessions data with formatted dates
+    const sessionsData: SessionItemData[] = logic.sessions.map((session) => ({
+        session,
+        formattedDate: new Date(session.date).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }),
+    }));
 
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <ScreenWrapper useSafeArea={false} padding={0}>
+        <ScreenWrapper useSafeArea padding={0}>
             <FlatList
-                data={logic.sessions}
+                data={sessionsData}
                 keyExtractor={keyExtractor}
-                renderItem={renderSession}
+                renderItem={renderSessionCard}
                 ListHeaderComponent={renderHeader}
-                ListEmptyComponent={renderEmpty}
-                ItemSeparatorComponent={renderSeparator}
+                ListEmptyComponent={renderEmptyState}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={logic.isLoading}
+                        onRefresh={logic.refreshTopic}
+                        tintColor={GlassColors.accent.primary}
+                        colors={[GlassColors.accent.primary]}
+                    />
+                }
+            />
+
+            {/* FAB pour nouvelle session */}
+            <GlassButton
+                title="Nouvelle session"
+                onPress={logic.handleStartSession}
+                variant="primary"
+                fullWidth
+                style={styles.fab}
+                leftIcon={
+                    <MaterialCommunityIcons
+                        name="microphone"
+                        size={24}
+                        color={GlassColors.text.primary}
+                    />
+                }
             />
         </ScreenWrapper>
     );
