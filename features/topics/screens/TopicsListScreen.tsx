@@ -76,15 +76,13 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
     const renderTopicCard = useCallback(
         ({ item }: { item: TopicItemData }) => (
             <TopicCard
-                topic={item.topic}
-                theme={item.theme}
-                lastSessionDate={item.lastSessionDate}
+                data={item}
                 onPress={() => logic.handleCardPress(item.topic.id)}
                 onEdit={() => logic.handleEdit(item.topic.id)}
                 onShare={() => logic.handleShare(item.topic.id)}
                 onDelete={() => logic.handleDelete(item.topic.id)}
-                onSwipeableWillOpen={() => logic.closeAllSwipeables(item.topic.id)}
-            />
+                registerRef={(ref) => logic.registerSwipeableRef(item.topic.id, ref)}
+                unregisterRef={() => logic.unregisterSwipeableRef(item.topic.id)}            />
         ),
         [logic.handleCardPress, logic.handleEdit, logic.handleShare, logic.handleDelete, logic.closeAllSwipeables]
     );

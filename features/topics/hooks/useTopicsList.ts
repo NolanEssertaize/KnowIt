@@ -3,6 +3,7 @@
  * @description Logic Controller pour l'écran de liste des topics
  *
  * FIXES:
+ * - Added safety filters to prevent crashes on undefined topics
  * - Added useEffect to load topics on mount for synchronization
  * - Added streak property for tracking consecutive days of study
  */
@@ -59,7 +60,7 @@ export interface UseTopicsListReturn {
     hasActiveFilters: boolean;
     isLoading: boolean;
     error: string | null;
-    streak: number; // NEW: Streak counter
+    streak: number;
 
     // Methods
     setSearchText: (text: string) => void;
@@ -103,15 +104,21 @@ function useDebounce<T>(value: T, delay: number): T {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function calculateStreak(topics: Topic[]): number {
+    // SAFETY CHECK: Ensure topics array exists
+    if (!topics || !Array.isArray(topics)) return 0;
+
     // Get all session dates from all topics
     const allSessionDates: Date[] = [];
 
     topics.forEach(topic => {
-        topic.sessions.forEach(session => {
-            if (session.date) {
-                allSessionDates.push(new Date(session.date));
-            }
-        });
+        // SAFETY CHECK: Ensure topic and sessions exist
+        if (topic && topic.sessions && Array.isArray(topic.sessions)) {
+            topic.sessions.forEach(session => {
+                if (session && session.date) {
+                    allSessionDates.push(new Date(session.date));
+                }
+            });
+        }
     });
 
     if (allSessionDates.length === 0) return 0;
@@ -192,7 +199,7 @@ export function useTopicsList(): UseTopicsListReturn {
     const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
     // ─────────────────────────────────────────────────────────────────────────
-    // FIX: Load topics on mount to sync with API
+    // EFFECTS
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         console.log('[useTopicsList] Loading topics on mount...');
@@ -203,12 +210,10 @@ export function useTopicsList(): UseTopicsListReturn {
     // MEMOIZED VALUES
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Vérifier si des filtres sont actifs
     const hasActiveFilters = useMemo(() => {
         return debouncedSearchText.trim().length > 0 || selectedCategory !== 'all';
     }, [debouncedSearchText, selectedCategory]);
 
-    // Salutation selon l'heure
     const greeting = useMemo(() => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Bonjour';
@@ -216,61 +221,65 @@ export function useTopicsList(): UseTopicsListReturn {
         return 'Bonsoir';
     }, []);
 
-    // Topics filtrés et enrichis (utilise le texte debounced)
+    // Topics filtrés et enrichis
     const filteredTopics = useMemo((): TopicItemData[] => {
-        let result = [...topics];
+        // SAFETY CHECK 1: Ensure topics exists
+        if (!topics || !Array.isArray(topics)) return [];
 
-        // Filtre par recherche (avec debounce)
+        // SAFETY CHECK 2: Filter out undefined/null topics immediately
+        // This is the main fix for "Cannot read property 'topic' of undefined"
+        let result = topics.filter((t) => t && t.id);
+
+        // Filtre par recherche
         if (debouncedSearchText.trim()) {
             const query = debouncedSearchText.toLowerCase();
-            result = result.filter((t) => t.title.toLowerCase().includes(query));
+            result = result.filter((t) => t.title && t.title.toLowerCase().includes(query));
         }
 
         // Tri par catégorie
         if (selectedCategory === 'recent') {
             result.sort((a, b) => {
-                const dateA = a.sessions[0]?.date || '';
-                const dateB = b.sessions[0]?.date || '';
+                // Safety check on sessions access
+                const dateA = (a.sessions && a.sessions[0]?.date) || '';
+                const dateB = (b.sessions && b.sessions[0]?.date) || '';
                 return new Date(dateB).getTime() - new Date(dateA).getTime();
             });
         }
 
-        // Enrichissement avec thème et date
+        // Enrichissement
         return result.map((topic, index) => ({
             topic,
             theme: TOPIC_THEMES[index % TOPIC_THEMES.length],
-            lastSessionDate: topic.sessions[0]?.date
+            // Safety check on sessions access
+            lastSessionDate: topic.sessions && topic.sessions[0]?.date
                 ? formatDateRelative(topic.sessions[0].date)
                 : 'Jamais',
         }));
     }, [topics, debouncedSearchText, selectedCategory]);
 
-    // Stats
+    // Stats (with safety check)
     const totalSessions = useMemo(
-        () => topics.reduce((acc, t) => acc + t.sessions.length, 0),
+        () => (topics || []).reduce((acc, t) => acc + (t?.sessions?.length || 0), 0),
         [topics]
     );
 
-    // NEW: Calculate streak
+    // Streak
     const streak = useMemo(() => calculateStreak(topics), [topics]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // HANDLERS
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Réinitialiser les filtres
     const resetFilters = useCallback(() => {
         setSearchText('');
         setSelectedCategory('all');
     }, []);
 
-    // Refresh topics from API
     const refreshTopics = useCallback(async () => {
         console.log('[useTopicsList] Refreshing topics...');
         await loadTopics();
     }, [loadTopics]);
 
-    // Add topic handler
     const handleAddTopic = useCallback(async () => {
         const trimmed = newTopicText.trim();
         if (!trimmed) return;
@@ -293,11 +302,10 @@ export function useTopicsList(): UseTopicsListReturn {
         }
     }, [newTopicText, addTopic]);
 
-    // Close all swipeables
     const closeAllSwipeables = useCallback((exceptId?: string) => {
         swipeableRefs.current.forEach((ref, id) => {
             if (id !== exceptId) {
-                ref.close();
+                ref?.close();
             }
         });
         if (!exceptId) {
@@ -305,7 +313,6 @@ export function useTopicsList(): UseTopicsListReturn {
         }
     }, []);
 
-    // Card press handler
     const handleCardPress = useCallback(
         (topicId: string) => {
             if (openSwipeableId) {
@@ -317,7 +324,6 @@ export function useTopicsList(): UseTopicsListReturn {
         [openSwipeableId, closeAllSwipeables, router]
     );
 
-    // Edit handler
     const handleEdit = useCallback(
         (topicId: string) => {
             console.log('Edit topic:', topicId);
@@ -327,7 +333,6 @@ export function useTopicsList(): UseTopicsListReturn {
         [closeAllSwipeables]
     );
 
-    // Share handler
     const handleShare = useCallback(
         (topicId: string) => {
             console.log('Share topic:', topicId);
@@ -337,7 +342,6 @@ export function useTopicsList(): UseTopicsListReturn {
         [closeAllSwipeables]
     );
 
-    // Delete handler
     const handleDelete = useCallback(
         (topicId: string) => {
             deleteTopic(topicId);
@@ -346,9 +350,10 @@ export function useTopicsList(): UseTopicsListReturn {
         [deleteTopic, closeAllSwipeables]
     );
 
-    // Swipeable ref management
     const registerSwipeableRef = useCallback((id: string, ref: SwipeableMethods) => {
-        swipeableRefs.current.set(id, ref);
+        if (ref) {
+            swipeableRefs.current.set(id, ref);
+        }
     }, []);
 
     const unregisterSwipeableRef = useCallback((id: string) => {
@@ -360,21 +365,18 @@ export function useTopicsList(): UseTopicsListReturn {
     // ─────────────────────────────────────────────────────────────────────────
 
     return {
-        // Data
         filteredTopics,
         searchText,
         selectedCategory,
         showAddModal,
         newTopicText,
         totalSessions,
-        topicsCount: topics.length,
+        topicsCount: (topics || []).length,
         greeting,
         hasActiveFilters,
         isLoading,
         error,
-        streak, // NEW
-
-        // Methods
+        streak,
         setSearchText,
         setSelectedCategory,
         setShowAddModal,
