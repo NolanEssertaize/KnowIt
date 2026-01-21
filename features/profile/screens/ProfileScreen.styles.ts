@@ -1,13 +1,14 @@
 /**
  * @file ProfileScreen.styles.ts
- * @description Styles pour l'écran de profil avec style iOS Glassmorphism
+ * @description Styles pour l'écran de profil - Monochrome "AI Driver" Theme
  *
- * Changements:
- * - Suppression des styles profileHeader (avatar, userName, userEmail)
- * - Nouveau style iOS glassmorphism pour les tabs
+ * REWORK: Pure black/white aesthetic
+ * - No colored accents
+ * - Native glassmorphism (iOS blur)
+ * - Content-first hierarchy
  */
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { GlassColors, Spacing, BorderRadius, FontSize, FontWeight, Shadows } from '@/theme';
 
 export const styles = StyleSheet.create({
@@ -28,7 +29,7 @@ export const styles = StyleSheet.create({
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // HEADER
+    // HEADER - Native Platform Style
     // ═══════════════════════════════════════════════════════════════════════════
 
     header: {
@@ -44,9 +45,13 @@ export const styles = StyleSheet.create({
         height: 44,
         borderRadius: BorderRadius.full,
         backgroundColor: GlassColors.glass.background,
+        borderWidth: 1,
+        borderColor: GlassColors.glass.border,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: Spacing.md,
+        // Monochrome shadow (no colored glow)
+        ...Shadows.glassLight,
     },
 
     headerTitle: {
@@ -57,7 +62,7 @@ export const styles = StyleSheet.create({
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // IOS GLASSMORPHISM TABS
+    // GLASSMORPHISM TABS - iOS Native Style
     // ═══════════════════════════════════════════════════════════════════════════
 
     tabsContainer: {
@@ -111,7 +116,7 @@ export const styles = StyleSheet.create({
     },
 
     scrollContent: {
-        paddingBottom: Spacing.xxl + 100, // Extra space for logout button
+        paddingBottom: Spacing.xxl + 100,
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -128,7 +133,7 @@ export const styles = StyleSheet.create({
         color: GlassColors.text.tertiary,
         textTransform: 'uppercase',
         letterSpacing: 1,
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.sm,
         marginLeft: Spacing.xs,
     },
 
@@ -138,7 +143,7 @@ export const styles = StyleSheet.create({
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // LIST ITEM
+    // LIST ITEMS
     // ═══════════════════════════════════════════════════════════════════════════
 
     listItem: {
@@ -158,7 +163,8 @@ export const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: BorderRadius.md,
-        backgroundColor: GlassColors.glass.backgroundLight,
+        // Monochrome: use subtle background instead of colored
+        backgroundColor: GlassColors.surface.elevated,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: Spacing.md,
@@ -250,7 +256,7 @@ export const styles = StyleSheet.create({
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // LANGUAGE SELECTOR
+    // LANGUAGE SELECTOR - Monochrome
     // ═══════════════════════════════════════════════════════════════════════════
 
     languageSelector: {
@@ -271,8 +277,9 @@ export const styles = StyleSheet.create({
     },
 
     languageOptionActive: {
-        backgroundColor: GlassColors.accent.primary,
-        borderColor: GlassColors.accent.primary,
+        // Monochrome: Use solid foreground color instead of accent
+        backgroundColor: GlassColors.text.primary,
+        borderColor: GlassColors.text.primary,
     },
 
     languageText: {
@@ -282,12 +289,15 @@ export const styles = StyleSheet.create({
     },
 
     languageTextActive: {
-        color: GlassColors.text.primary,
+        // Inverse color when active (white on black / black on white)
+        color: GlassColors.glass.background === 'rgba(255, 255, 255, 0.08)'
+            ? '#000000'
+            : '#FFFFFF',
         fontWeight: FontWeight.semibold,
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // DANGER ITEM
+    // DANGER ITEM - Monochrome (No red)
     // ═══════════════════════════════════════════════════════════════════════════
 
     dangerItem: {
@@ -303,7 +313,8 @@ export const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: BorderRadius.md,
-        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        // Monochrome: subtle background instead of red tint
+        backgroundColor: GlassColors.surface.elevated,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: Spacing.md,
@@ -313,7 +324,8 @@ export const styles = StyleSheet.create({
         flex: 1,
         fontSize: FontSize.md,
         fontWeight: FontWeight.medium,
-        color: GlassColors.semantic.error,
+        // Monochrome: use primary foreground (emphasized through weight)
+        color: GlassColors.text.primary,
     },
 
     // ═══════════════════════════════════════════════════════════════════════════

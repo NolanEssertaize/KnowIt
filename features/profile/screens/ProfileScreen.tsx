@@ -1,19 +1,14 @@
 /**
  * @file ProfileScreen.tsx
- * @description Écran de profil utilisateur avec onglets et style iOS Glassmorphism
+ * @description Écran de profil utilisateur - Monochrome "AI Driver" Theme
  *
  * Pattern: MVVM - Uses useProfile hook for business logic
  *
- * Onglets:
- * - Profile: Informations personnelles + changement mot de passe
- * - Preferences: Paramètres de l'application
- * - About: À propos + liens légaux
- *
- * Changements:
- * - Suppression du header avec avatar, nom et email (redondant)
- * - Style iOS glassmorphism pour les onglets
- * - Intégration API complète via useAuthStore
- * - Modales de confirmation pour logout et delete
+ * REWORK:
+ * - Pure black/white aesthetic
+ * - Native iOS back button style
+ * - Monochrome switches and icons
+ * - No colored accents
  */
 
 import React, { memo, useCallback } from 'react';
@@ -26,6 +21,7 @@ import {
     Switch,
     Alert,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -60,6 +56,7 @@ const TabButton = memo(function TabButton({ label, icon, isActive, onPress }: Ta
             <MaterialIcons
                 name={icon}
                 size={20}
+                // Monochrome: primary for active, tertiary for inactive
                 color={isActive ? GlassColors.text.primary : GlassColors.text.tertiary}
             />
             <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
@@ -105,7 +102,7 @@ export const ProfileScreen = memo(function ProfileScreen() {
                     onPress: async () => {
                         await logic.handleExportData();
                         Alert.alert('Succès', 'Vos données vous seront envoyées par email');
-                    }
+                    },
                 },
             ]
         );
@@ -120,14 +117,17 @@ export const ProfileScreen = memo(function ProfileScreen() {
         }
     }, [logic, router]);
 
-    const handleDeleteConfirm = useCallback(async (password: string) => {
-        const result = await logic.handleDeleteAccount(password);
-        if (result.success) {
-            router.replace('/(auth)/login');
-        } else if (result.error) {
-            Alert.alert('Erreur', result.error);
-        }
-    }, [logic, router]);
+    const handleDeleteConfirm = useCallback(
+        async (password: string) => {
+            const result = await logic.handleDeleteAccount(password);
+            if (result.success) {
+                router.replace('/(auth)/login');
+            } else if (result.error) {
+                Alert.alert('Erreur', result.error);
+            }
+        },
+        [logic, router]
+    );
 
     // ─────────────────────────────────────────────────────────────────────────
     // LOADING STATE
@@ -137,7 +137,8 @@ export const ProfileScreen = memo(function ProfileScreen() {
         return (
             <ScreenWrapper>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={GlassColors.accent.primary} />
+                    {/* Monochrome: Use primary foreground color */}
+                    <ActivityIndicator size="large" color={GlassColors.text.primary} />
                     <Text style={styles.loadingText}>Chargement...</Text>
                 </View>
             </ScreenWrapper>
@@ -189,16 +190,17 @@ export const ProfileScreen = memo(function ProfileScreen() {
                 <Text style={styles.sectionTitle}>Sécurité</Text>
                 <GlassView variant="default" style={styles.sectionCard}>
                     <TouchableOpacity
-                        style={styles.listItem}
-                        onPress={logic.showPasswordModal}
+                        style={[styles.listItem, styles.listItemLast]}
+                        onPress={logic.openPasswordModal}
                         activeOpacity={0.7}
                     >
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="lock" size={20} color={GlassColors.accent.primary} />
+                            {/* Monochrome: use primary color */}
+                            <MaterialIcons name="lock" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
-                            <Text style={styles.listItemLabel}>Changer le mot de passe</Text>
-                            <Text style={styles.listItemValue}>Sécurisez votre compte</Text>
+                            <Text style={styles.listItemLabel}>Modifier le mot de passe</Text>
+                            <Text style={styles.listItemValue}>••••••••</Text>
                         </View>
                         <MaterialIcons
                             name="chevron-right"
@@ -207,31 +209,12 @@ export const ProfileScreen = memo(function ProfileScreen() {
                             style={styles.listItemChevron}
                         />
                     </TouchableOpacity>
-
-                    {/* Google Link */}
-                    <View style={[styles.listItem, styles.listItemLast]}>
-                        <View style={styles.listItemIcon}>
-                            <MaterialIcons name="link" size={20} color={GlassColors.accent.secondary} />
-                        </View>
-                        <View style={styles.listItemContent}>
-                            <Text style={styles.listItemLabel}>Compte Google</Text>
-                            <Text style={styles.listItemValue}>
-                                {logic.user.isGoogleLinked ? 'Connecté' : 'Non connecté'}
-                            </Text>
-                        </View>
-                        <MaterialIcons
-                            name="chevron-right"
-                            size={24}
-                            color={GlassColors.text.tertiary}
-                            style={styles.listItemChevron}
-                        />
-                    </View>
                 </GlassView>
             </View>
 
-            {/* RGPD / Data */}
+            {/* Data Management */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Mes données (RGPD)</Text>
+                <Text style={styles.sectionTitle}>Mes données</Text>
                 <GlassView variant="default" style={styles.sectionCard}>
                     <TouchableOpacity
                         style={styles.listItem}
@@ -239,11 +222,11 @@ export const ProfileScreen = memo(function ProfileScreen() {
                         activeOpacity={0.7}
                     >
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="download" size={20} color={GlassColors.accent.tertiary} />
+                            <MaterialIcons name="download" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
                             <Text style={styles.listItemLabel}>Exporter mes données</Text>
-                            <Text style={styles.listItemValue}>Télécharger toutes vos données</Text>
+                            <Text style={styles.listItemValue}>Recevoir une copie de vos données</Text>
                         </View>
                         <MaterialIcons
                             name="chevron-right"
@@ -253,20 +236,20 @@ export const ProfileScreen = memo(function ProfileScreen() {
                         />
                     </TouchableOpacity>
 
+                    {/* Delete Account - Monochrome (no red) */}
                     <TouchableOpacity
                         style={[styles.dangerItem, styles.listItemLast]}
-                        onPress={logic.showDeleteModal}
+                        onPress={logic.openDeleteModal}
                         activeOpacity={0.7}
                     >
                         <View style={styles.dangerIcon}>
-                            <MaterialIcons name="delete-forever" size={20} color={GlassColors.semantic.error} />
+                            <MaterialIcons name="delete-forever" size={20} color={GlassColors.text.primary} />
                         </View>
                         <Text style={styles.dangerText}>Supprimer mon compte</Text>
                         <MaterialIcons
                             name="chevron-right"
                             size={24}
-                            color={GlassColors.semantic.error}
-                            style={styles.listItemChevron}
+                            color={GlassColors.text.tertiary}
                         />
                     </TouchableOpacity>
                 </GlassView>
@@ -294,9 +277,16 @@ export const ProfileScreen = memo(function ProfileScreen() {
                             onValueChange={logic.toggleNotifications}
                             trackColor={{
                                 false: GlassColors.glass.background,
-                                true: GlassColors.accent.primary
+                                // Monochrome: use primary foreground instead of colored accent
+                                true: GlassColors.text.primary,
                             }}
-                            thumbColor={GlassColors.text.primary}
+                            // Monochrome: inverse color for thumb
+                            thumbColor={
+                                logic.preferences.notifications
+                                    ? GlassColors.glass.background
+                                    : GlassColors.text.primary
+                            }
+                            ios_backgroundColor={GlassColors.glass.background}
                         />
                     </View>
                 </GlassView>
@@ -316,9 +306,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
                             onValueChange={logic.toggleDarkMode}
                             trackColor={{
                                 false: GlassColors.glass.background,
-                                true: GlassColors.accent.primary
+                                true: GlassColors.text.primary,
                             }}
-                            thumbColor={GlassColors.text.primary}
+                            thumbColor={
+                                logic.preferences.darkMode
+                                    ? GlassColors.glass.background
+                                    : GlassColors.text.primary
+                            }
+                            ios_backgroundColor={GlassColors.glass.background}
                         />
                     </View>
                 </GlassView>
@@ -328,37 +323,43 @@ export const ProfileScreen = memo(function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Langue</Text>
                 <GlassView variant="default" style={styles.sectionCard}>
-                    <View style={[styles.inputItem, styles.listItemLast]}>
-                        <Text style={styles.inputLabel}>Langue de l'interface</Text>
-                        <View style={styles.languageSelector}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.languageOption,
-                                    logic.preferences.language === 'fr' && styles.languageOptionActive,
-                                ]}
-                                onPress={() => logic.setLanguage('fr')}
-                            >
-                                <Text style={[
-                                    styles.languageText,
-                                    logic.preferences.language === 'fr' && styles.languageTextActive,
-                                ]}>
-                                    🇫🇷 Français
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.languageOption,
-                                    logic.preferences.language === 'en' && styles.languageOptionActive,
-                                ]}
-                                onPress={() => logic.setLanguage('en')}
-                            >
-                                <Text style={[
-                                    styles.languageText,
-                                    logic.preferences.language === 'en' && styles.languageTextActive,
-                                ]}>
-                                    🇬🇧 English
-                                </Text>
-                            </TouchableOpacity>
+                    <View style={[styles.switchItem, styles.listItemLast]}>
+                        <View style={styles.switchLabel}>
+                            <Text style={styles.switchTitle}>Langue de l'interface</Text>
+                            <View style={styles.languageSelector}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.languageOption,
+                                        logic.preferences.language === 'fr' && styles.languageOptionActive,
+                                    ]}
+                                    onPress={() => logic.setLanguage('fr')}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.languageText,
+                                            logic.preferences.language === 'fr' && styles.languageTextActive,
+                                        ]}
+                                    >
+                                        Français
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.languageOption,
+                                        logic.preferences.language === 'en' && styles.languageOptionActive,
+                                    ]}
+                                    onPress={() => logic.setLanguage('en')}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.languageText,
+                                            logic.preferences.language === 'en' && styles.languageTextActive,
+                                        ]}
+                                    >
+                                        English
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </GlassView>
@@ -378,9 +379,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
                             onValueChange={logic.toggleAutoSave}
                             trackColor={{
                                 false: GlassColors.glass.background,
-                                true: GlassColors.accent.primary
+                                true: GlassColors.text.primary,
                             }}
-                            thumbColor={GlassColors.text.primary}
+                            thumbColor={
+                                logic.preferences.autoSave
+                                    ? GlassColors.glass.background
+                                    : GlassColors.text.primary
+                            }
+                            ios_backgroundColor={GlassColors.glass.background}
                         />
                     </View>
 
@@ -394,9 +400,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
                             onValueChange={logic.toggleAnalytics}
                             trackColor={{
                                 false: GlassColors.glass.background,
-                                true: GlassColors.accent.primary
+                                true: GlassColors.text.primary,
                             }}
-                            thumbColor={GlassColors.text.primary}
+                            thumbColor={
+                                logic.preferences.analyticsEnabled
+                                    ? GlassColors.glass.background
+                                    : GlassColors.text.primary
+                            }
+                            ios_backgroundColor={GlassColors.glass.background}
                         />
                     </View>
                 </GlassView>
@@ -416,7 +427,7 @@ export const ProfileScreen = memo(function ProfileScreen() {
                 <GlassView variant="default" style={styles.sectionCard}>
                     <View style={styles.listItem}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="info" size={20} color={GlassColors.accent.primary} />
+                            <MaterialIcons name="info" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
                             <Text style={styles.listItemLabel}>Version</Text>
@@ -424,15 +435,37 @@ export const ProfileScreen = memo(function ProfileScreen() {
                         </View>
                     </View>
 
-                    <View style={[styles.listItem, styles.listItemLast]}>
+                    <TouchableOpacity style={styles.listItem} activeOpacity={0.7}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="update" size={20} color={GlassColors.accent.secondary} />
+                            <MaterialIcons name="star" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
-                            <Text style={styles.listItemLabel}>Dernière mise à jour</Text>
-                            <Text style={styles.listItemValue}>21 Janvier 2026</Text>
+                            <Text style={styles.listItemLabel}>Noter l'application</Text>
+                            <Text style={styles.listItemValue}>Laissez-nous un avis</Text>
                         </View>
-                    </View>
+                        <MaterialIcons
+                            name="chevron-right"
+                            size={24}
+                            color={GlassColors.text.tertiary}
+                            style={styles.listItemChevron}
+                        />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.listItem, styles.listItemLast]} activeOpacity={0.7}>
+                        <View style={styles.listItemIcon}>
+                            <MaterialIcons name="share" size={20} color={GlassColors.text.primary} />
+                        </View>
+                        <View style={styles.listItemContent}>
+                            <Text style={styles.listItemLabel}>Partager KnowIt</Text>
+                            <Text style={styles.listItemValue}>Invitez vos amis</Text>
+                        </View>
+                        <MaterialIcons
+                            name="chevron-right"
+                            size={24}
+                            color={GlassColors.text.tertiary}
+                            style={styles.listItemChevron}
+                        />
+                    </TouchableOpacity>
                 </GlassView>
             </View>
 
@@ -442,29 +475,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
                 <GlassView variant="default" style={styles.sectionCard}>
                     <TouchableOpacity style={styles.listItem} activeOpacity={0.7}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="description" size={20} color={GlassColors.text.secondary} />
+                            <MaterialIcons name="description" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
                             <Text style={styles.listItemLabel}>Conditions d'utilisation</Text>
                         </View>
                         <MaterialIcons
-                            name="open-in-new"
-                            size={20}
-                            color={GlassColors.text.tertiary}
-                            style={styles.listItemChevron}
-                        />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.listItem} activeOpacity={0.7}>
-                        <View style={styles.listItemIcon}>
-                            <MaterialIcons name="privacy-tip" size={20} color={GlassColors.text.secondary} />
-                        </View>
-                        <View style={styles.listItemContent}>
-                            <Text style={styles.listItemLabel}>Politique de confidentialité</Text>
-                        </View>
-                        <MaterialIcons
-                            name="open-in-new"
-                            size={20}
+                            name="chevron-right"
+                            size={24}
                             color={GlassColors.text.tertiary}
                             style={styles.listItemChevron}
                         />
@@ -472,14 +490,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
 
                     <TouchableOpacity style={[styles.listItem, styles.listItemLast]} activeOpacity={0.7}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="gavel" size={20} color={GlassColors.text.secondary} />
+                            <MaterialIcons name="privacy-tip" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
-                            <Text style={styles.listItemLabel}>Licences open source</Text>
+                            <Text style={styles.listItemLabel}>Politique de confidentialité</Text>
                         </View>
                         <MaterialIcons
-                            name="open-in-new"
-                            size={20}
+                            name="chevron-right"
+                            size={24}
                             color={GlassColors.text.tertiary}
                             style={styles.listItemChevron}
                         />
@@ -493,10 +511,11 @@ export const ProfileScreen = memo(function ProfileScreen() {
                 <GlassView variant="default" style={styles.sectionCard}>
                     <TouchableOpacity style={styles.listItem} activeOpacity={0.7}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="help" size={20} color={GlassColors.accent.tertiary} />
+                            <MaterialIcons name="help" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
                             <Text style={styles.listItemLabel}>Centre d'aide</Text>
+                            <Text style={styles.listItemValue}>FAQ et tutoriels</Text>
                         </View>
                         <MaterialIcons
                             name="chevron-right"
@@ -508,7 +527,7 @@ export const ProfileScreen = memo(function ProfileScreen() {
 
                     <TouchableOpacity style={[styles.listItem, styles.listItemLast]} activeOpacity={0.7}>
                         <View style={styles.listItemIcon}>
-                            <MaterialIcons name="email" size={20} color={GlassColors.accent.tertiary} />
+                            <MaterialIcons name="email" size={20} color={GlassColors.text.primary} />
                         </View>
                         <View style={styles.listItemContent}>
                             <Text style={styles.listItemLabel}>Nous contacter</Text>
@@ -538,10 +557,14 @@ export const ProfileScreen = memo(function ProfileScreen() {
 
     return (
         <ScreenWrapper>
-            {/* Header */}
+            {/* Header - Native iOS Back Button Style */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                    <MaterialIcons name="arrow-back" size={24} color={GlassColors.text.primary} />
+                    <MaterialIcons
+                        name={Platform.OS === 'ios' ? 'arrow-back-ios' : 'arrow-back'}
+                        size={24}
+                        color={GlassColors.text.primary}
+                    />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Mon Profil</Text>
             </View>
@@ -578,45 +601,42 @@ export const ProfileScreen = memo(function ProfileScreen() {
                 {logic.activeTab === 'preferences' && renderPreferencesTab()}
                 {logic.activeTab === 'about' && renderAboutTab()}
 
-                {/* Logout Button (visible on all tabs) */}
+                {/* Logout Button - Primary variant (solid monochrome) */}
                 <GlassButton
                     title="Se déconnecter"
                     variant="outline"
-                    onPress={logic.showLogoutModal}
-                    leftIcon={<MaterialIcons name="logout" size={20} color={GlassColors.accent.primary} />}
+                    onPress={logic.openLogoutModal}
                     fullWidth
                     style={styles.logoutButton}
                 />
             </ScrollView>
 
-            {/* Password Change Modal */}
+            {/* Modals */}
             <PasswordChangeModal
                 visible={logic.isPasswordModalVisible}
-                onClose={logic.hidePasswordModal}
-                currentPassword={logic.passwordData.currentPassword}
-                newPassword={logic.passwordData.newPassword}
-                confirmPassword={logic.passwordData.confirmPassword}
+                onClose={logic.closePasswordModal}
+                currentPassword={logic.currentPassword}
+                newPassword={logic.newPassword}
+                confirmPassword={logic.confirmPassword}
                 onCurrentPasswordChange={logic.setCurrentPassword}
                 onNewPasswordChange={logic.setNewPassword}
                 onConfirmPasswordChange={logic.setConfirmPassword}
-                onSubmit={logic.handleChangePassword}
+                onSubmit={logic.handlePasswordChange}
                 errors={logic.passwordErrors}
                 isLoading={logic.isLoading}
             />
 
-            {/* Delete Account Modal */}
-            <DeleteAccountModal
-                visible={logic.isDeleteModalVisible}
-                onClose={logic.hideDeleteModal}
-                onConfirm={handleDeleteConfirm}
+            <LogoutConfirmationModal
+                visible={logic.isLogoutModalVisible}
+                onClose={logic.closeLogoutModal}
+                onConfirm={handleLogoutConfirm}
                 isLoading={logic.isLoading}
             />
 
-            {/* Logout Confirmation Modal */}
-            <LogoutConfirmationModal
-                visible={logic.isLogoutModalVisible}
-                onClose={logic.hideLogoutModal}
-                onConfirm={handleLogoutConfirm}
+            <DeleteAccountModal
+                visible={logic.isDeleteModalVisible}
+                onClose={logic.closeDeleteModal}
+                onConfirm={handleDeleteConfirm}
                 isLoading={logic.isLoading}
             />
         </ScreenWrapper>

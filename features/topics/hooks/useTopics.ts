@@ -18,12 +18,12 @@ import { formatDateRelative } from '@/shared/utils/dateUtils';
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TOPIC_THEMES: TopicTheme[] = [
-    { icon: 'laptop', color: '#3B82F6', gradient: ['#3B82F6', '#1D4ED8'] },
-    { icon: 'brain', color: '#8B5CF6', gradient: ['#8B5CF6', '#6D28D9'] },
-    { icon: 'chart-line', color: '#10B981', gradient: ['#10B981', '#059669'] },
-    { icon: 'palette', color: '#F59E0B', gradient: ['#F59E0B', '#D97706'] },
-    { icon: 'flask', color: '#EF4444', gradient: ['#EF4444', '#DC2626'] },
-    { icon: 'book-open-variant', color: '#EC4899', gradient: ['#EC4899', '#DB2777'] },
+    { icon: 'laptop', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'brain', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'chart-line', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'palette', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'flask', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'book-open-variant', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
 ];
 
 export const CATEGORIES: TopicCategory[] = [

@@ -172,7 +172,7 @@ export const TopicsListScreen = memo(function TopicsListScreen() {
                         <MaterialIcons
                             name="local-fire-department"
                             size={24}
-                            color="#FF6B35"
+                            color={GlassColors.semantic.success}
                         />
                         <View>
                             <Text style={styles.statNumber}>{logic.streak}</Text>
