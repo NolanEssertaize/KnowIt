@@ -1,81 +1,61 @@
 /**
- * GlassButton Component
- * Bouton avec effet Glassmorphism et animations
+ * @file GlassButton.tsx
+ * @description Bouton avec effet Glassmorphism et variantes
+ *
+ * FIX: Added fullWidth style to LinearGradient in primary/secondary variants
+ * to prevent button from overflowing its container
  */
 
-import React from 'react';
+import React, { memo, type ReactNode } from 'react';
 import {
     TouchableOpacity,
     Text,
-    StyleSheet,
-    ViewStyle,
-    TextStyle,
-    ActivityIndicator,
     View,
+    ActivityIndicator,
+    type ViewStyle,
+    type TextStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GlassColors, BorderRadius, Shadows } from '@/theme/theme';
+import { GlassColors, Shadows, BorderRadius } from '@/theme';
+import { styles, SIZE_STYLES, type ButtonSize } from './GlassButton.styles';
 
-type ButtonVariant = 'primary' | 'secondary' | 'glass' | 'outline' | 'ghost';
-type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
-interface GlassButtonProps {
-    /** Texte du bouton */
+export type ButtonVariant = 'primary' | 'secondary' | 'glass' | 'outline' | 'ghost';
+
+export interface GlassButtonProps {
     title: string;
-    /** Action au clic */
     onPress: () => void;
-    /** Variante de style */
     variant?: ButtonVariant;
-    /** Taille du bouton */
     size?: ButtonSize;
-    /** Désactiver le bouton */
     disabled?: boolean;
-    /** Afficher un loader */
     loading?: boolean;
-    /** Icône à gauche */
-    leftIcon?: React.ReactNode;
-    /** Icône à droite */
-    rightIcon?: React.ReactNode;
-    /** Largeur complète */
+    leftIcon?: ReactNode;
+    rightIcon?: ReactNode;
     fullWidth?: boolean;
-    /** Style additionnel du conteneur */
     style?: ViewStyle;
-    /** Style additionnel du texte */
     textStyle?: TextStyle;
 }
 
-const SIZE_STYLES: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
-    sm: {
-        container: { paddingHorizontal: 12, paddingVertical: 8 },
-        text: { fontSize: 14 },
-    },
-    md: {
-        container: { paddingHorizontal: 20, paddingVertical: 14 },
-        text: { fontSize: 16 },
-    },
-    lg: {
-        container: { paddingHorizontal: 28, paddingVertical: 18 },
-        text: { fontSize: 18 },
-    },
-    xl: {
-        container: { paddingHorizontal: 36, paddingVertical: 22 },
-        text: { fontSize: 20 },
-    },
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPOSANT PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
 
-export function GlassButton({
-                                title,
-                                onPress,
-                                variant = 'primary',
-                                size = 'md',
-                                disabled = false,
-                                loading = false,
-                                leftIcon,
-                                rightIcon,
-                                fullWidth = false,
-                                style,
-                                textStyle,
-                            }: GlassButtonProps) {
+export const GlassButton = memo(function GlassButton({
+                                                         title,
+                                                         onPress,
+                                                         variant = 'primary',
+                                                         size = 'md',
+                                                         disabled = false,
+                                                         loading = false,
+                                                         leftIcon,
+                                                         rightIcon,
+                                                         fullWidth = false,
+                                                         style,
+                                                         textStyle,
+                                                     }: GlassButtonProps) {
     const isDisabled = disabled || loading;
 
     const renderContent = () => (
@@ -83,9 +63,11 @@ export function GlassButton({
             {loading ? (
                 <ActivityIndicator
                     size="small"
-                    color={variant === 'outline' || variant === 'ghost'
-                        ? GlassColors.accent.primary
-                        : GlassColors.text.primary}
+                    color={
+                        variant === 'outline' || variant === 'ghost'
+                            ? GlassColors.accent.primary
+                            : GlassColors.text.primary
+                    }
                 />
             ) : (
                 <>
@@ -109,7 +91,7 @@ export function GlassButton({
         </View>
     );
 
-    // Primary Button avec gradient
+    // Primary Button - FIX: Added fullWidth to LinearGradient
     if (variant === 'primary') {
         return (
             <TouchableOpacity
@@ -130,6 +112,8 @@ export function GlassButton({
                         styles.container,
                         SIZE_STYLES[size].container,
                         !isDisabled && Shadows.glow(GlassColors.accent.primary),
+                        // FIX: Apply fullWidth to LinearGradient as well
+                        fullWidth && styles.fullWidth,
                     ]}
                 >
                     {renderContent()}
@@ -138,7 +122,7 @@ export function GlassButton({
         );
     }
 
-    // Secondary Button avec gradient violet
+    // Secondary Button - FIX: Added fullWidth to LinearGradient
     if (variant === 'secondary') {
         return (
             <TouchableOpacity
@@ -159,6 +143,8 @@ export function GlassButton({
                         styles.container,
                         SIZE_STYLES[size].container,
                         !isDisabled && Shadows.glow(GlassColors.accent.tertiary),
+                        // FIX: Apply fullWidth to LinearGradient as well
+                        fullWidth && styles.fullWidth,
                     ]}
                 >
                     {renderContent()}
@@ -227,167 +213,6 @@ export function GlassButton({
             {renderContent()}
         </TouchableOpacity>
     );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BOUTONS SPÉCIALISÉS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/** Bouton d'ajout circulaire */
-export function GlassAddButton({
-                                   onPress,
-                                   size = 56,
-                                   style,
-                               }: {
-    onPress: () => void;
-    size?: number;
-    style?: ViewStyle;
-}) {
-    return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={style}>
-            <LinearGradient
-                colors={[GlassColors.accent.primary, GlassColors.accent.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[
-                    styles.addButton,
-                    {
-                        width: size,
-                        height: size,
-                        borderRadius: size / 2,
-                    },
-                    Shadows.glow(GlassColors.accent.primary),
-                ]}
-            >
-                <Text style={[styles.addButtonText, { fontSize: size * 0.5 }]}>+</Text>
-            </LinearGradient>
-        </TouchableOpacity>
-    );
-}
-
-/** Bouton d'enregistrement (grand cercle) */
-export function RecordButton({
-                                 isRecording,
-                                 onPress,
-                                 size = 150,
-                                 style,
-                             }: {
-    isRecording: boolean;
-    onPress: () => void;
-    size?: number;
-    style?: ViewStyle;
-}) {
-    return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={style}>
-            <LinearGradient
-                colors={
-                    isRecording
-                        ? [GlassColors.semantic.error, '#DC2626']
-                        : [GlassColors.accent.primary, GlassColors.accent.secondary]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[
-                    styles.recordButton,
-                    {
-                        width: size,
-                        height: size,
-                        borderRadius: size / 2,
-                    },
-                    Shadows.glow(
-                        isRecording
-                            ? GlassColors.semantic.error
-                            : GlassColors.accent.primary
-                    ),
-                ]}
-            >
-                <Text style={styles.recordButtonText}>
-                    {isRecording ? 'STOP' : 'PARLER'}
-                </Text>
-            </LinearGradient>
-        </TouchableOpacity>
-    );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        borderRadius: BorderRadius.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    contentContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    text: {
-        color: GlassColors.text.primary,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    textOutline: {
-        color: GlassColors.accent.primary,
-    },
-    textGhost: {
-        color: GlassColors.accent.primary,
-    },
-    textGlass: {
-        color: GlassColors.text.primary,
-    },
-    textDisabled: {
-        color: GlassColors.text.tertiary,
-    },
-    iconLeft: {
-        marginRight: 8,
-    },
-    iconRight: {
-        marginLeft: 8,
-    },
-    fullWidth: {
-        width: '100%',
-    },
-    // Glass variant
-    glassButton: {
-        backgroundColor: GlassColors.glass.backgroundLight,
-        borderWidth: 1,
-        borderColor: GlassColors.glass.border,
-    },
-    disabledGlass: {
-        backgroundColor: GlassColors.surface.disabled,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-    },
-    // Outline variant
-    outlineButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 1.5,
-        borderColor: GlassColors.accent.primary,
-    },
-    disabledOutline: {
-        borderColor: GlassColors.text.tertiary,
-    },
-    // Ghost variant
-    ghostButton: {
-        backgroundColor: 'transparent',
-    },
-    // Add button
-    addButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    addButtonText: {
-        color: GlassColors.text.primary,
-        fontWeight: 'bold',
-    },
-    // Record button
-    recordButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    recordButtonText: {
-        color: GlassColors.text.primary,
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
 });
 
 export default GlassButton;

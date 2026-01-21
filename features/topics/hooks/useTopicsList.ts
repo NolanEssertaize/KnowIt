@@ -2,7 +2,9 @@
  * @file useTopicsList.ts
  * @description Logic Controller pour l'écran de liste des topics
  *
- * FIX: Added useEffect to load topics on mount for synchronization
+ * FIXES:
+ * - Added useEffect to load topics on mount for synchronization
+ * - Added streak property for tracking consecutive days of study
  */
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
@@ -57,6 +59,7 @@ export interface UseTopicsListReturn {
     hasActiveFilters: boolean;
     isLoading: boolean;
     error: string | null;
+    streak: number; // NEW: Streak counter
 
     // Methods
     setSearchText: (text: string) => void;
@@ -93,6 +96,71 @@ function useDebounce<T>(value: T, delay: number): T {
     }, [value, delay]);
 
     return debouncedValue;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPER - Calculate streak from sessions
+// ═══════════════════════════════════════════════════════════════════════════
+
+function calculateStreak(topics: Topic[]): number {
+    // Get all session dates from all topics
+    const allSessionDates: Date[] = [];
+
+    topics.forEach(topic => {
+        topic.sessions.forEach(session => {
+            if (session.date) {
+                allSessionDates.push(new Date(session.date));
+            }
+        });
+    });
+
+    if (allSessionDates.length === 0) return 0;
+
+    // Sort dates descending (most recent first)
+    allSessionDates.sort((a, b) => b.getTime() - a.getTime());
+
+    // Get unique days (normalize to start of day)
+    const uniqueDays = new Set<string>();
+    allSessionDates.forEach(date => {
+        const dayKey = date.toISOString().split('T')[0];
+        uniqueDays.add(dayKey);
+    });
+
+    const sortedDays = Array.from(uniqueDays).sort().reverse();
+
+    if (sortedDays.length === 0) return 0;
+
+    // Check if today or yesterday has a session
+    const today = new Date();
+    const todayKey = today.toISOString().split('T')[0];
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split('T')[0];
+
+    // If no session today or yesterday, streak is 0
+    if (sortedDays[0] !== todayKey && sortedDays[0] !== yesterdayKey) {
+        return 0;
+    }
+
+    // Count consecutive days
+    let streak = 1;
+    let currentDate = new Date(sortedDays[0]);
+
+    for (let i = 1; i < sortedDays.length; i++) {
+        const prevDate = new Date(currentDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        const prevKey = prevDate.toISOString().split('T')[0];
+
+        if (sortedDays[i] === prevKey) {
+            streak++;
+            currentDate = prevDate;
+        } else {
+            break;
+        }
+    }
+
+    return streak;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -183,6 +251,9 @@ export function useTopicsList(): UseTopicsListReturn {
         [topics]
     );
 
+    // NEW: Calculate streak
+    const streak = useMemo(() => calculateStreak(topics), [topics]);
+
     // ─────────────────────────────────────────────────────────────────────────
     // HANDLERS
     // ─────────────────────────────────────────────────────────────────────────
@@ -200,14 +271,26 @@ export function useTopicsList(): UseTopicsListReturn {
     }, [loadTopics]);
 
     // Add topic handler
-    const handleAddTopic = useCallback(() => {
+    const handleAddTopic = useCallback(async () => {
         const trimmed = newTopicText.trim();
         if (!trimmed) return;
 
-        addTopic(trimmed);
-        setNewTopicText('');
-        setShowAddModal(false);
-        Keyboard.dismiss();
+        console.log('[useTopicsList] Adding topic:', trimmed);
+
+        try {
+            const newTopic = await addTopic(trimmed);
+
+            if (newTopic) {
+                console.log('[useTopicsList] Topic created:', newTopic.id);
+                setNewTopicText('');
+                setShowAddModal(false);
+                Keyboard.dismiss();
+            } else {
+                console.error('[useTopicsList] Failed to create topic - no topic returned');
+            }
+        } catch (error) {
+            console.error('[useTopicsList] Error creating topic:', error);
+        }
     }, [newTopicText, addTopic]);
 
     // Close all swipeables
@@ -289,6 +372,7 @@ export function useTopicsList(): UseTopicsListReturn {
         hasActiveFilters,
         isLoading,
         error,
+        streak, // NEW
 
         // Methods
         setSearchText,

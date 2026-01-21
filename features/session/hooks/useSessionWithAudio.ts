@@ -1,323 +1,148 @@
 /**
  * @file useSessionWithAudio.ts
- * @description Session Recording Hook - Handles audio recording and AI analysis
- * 
- * Pattern: MVVM - This hook serves as the ViewModel for SessionScreen
- * 
- * Flow:
- * 1. User starts recording → useAudioRecording
- * 2. User stops recording → Get audio URI
- * 3. Audio sent to API → Transcription (Whisper)
- * 4. Transcription analyzed → Analysis (GPT-4)
- * 5. Session saved and displayed
+ * @description Logic Controller pour l'écran d'enregistrement avec audio réel
+ * Combine useSession et useAudioRecording
+ *
+ * FIXES:
+ * - Uses selectCurrentTopic instead of selectTopicById to fix "Topic introuvable" error
+ * - The topic is already loaded by TopicDetailScreen, so we use currentTopic
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { Audio } from 'expo-av';
-import { LLMService } from '@/shared/services';
-import { useStore } from '@/store';
-import { ApiException } from '@/shared/api';
-import type { Session } from '@/store';
-import type { AnalysisResult } from '@/shared/api';
+import { useState, useCallback, useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useStore, selectCurrentTopic } from '@/store/useStore';
+import { useAudioRecording } from './useAudioRecording';
+import type { Topic, RecordingState } from '@/types';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type RecordingState = 'idle' | 'recording' | 'analyzing' | 'complete' | 'error';
+export interface UseSessionWithAudioReturn {
+    // Data
+    topic: Topic | null;
+    recordingState: RecordingState;
+    isRecording: boolean;
+    isAnalyzing: boolean;
+    audioLevel: number;
+    audioUri: string | null;
+    error: string | null;
+    hasPermission: boolean;
+    duration: number;
 
-interface SessionResult {
-  transcription: string;
-  analysis: AnalysisResult;
-  sessionId?: string;
+    // Methods
+    toggleRecording: () => Promise<void>;
+    handleClose: () => void;
+    requestPermission: () => Promise<boolean>;
 }
-
-interface UseSessionWithAudioReturn {
-  // State
-  recordingState: RecordingState;
-  isRecording: boolean;
-  isAnalyzing: boolean;
-  error: string | null;
-  result: SessionResult | null;
-  duration: number;
-  
-  // Actions
-  startRecording: () => Promise<void>;
-  stopRecording: () => Promise<void>;
-  cancelRecording: () => Promise<void>;
-  processRecording: (topicId: string, topicTitle: string) => Promise<SessionResult | null>;
-  reset: () => void;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// RECORDING CONFIG
-// ═══════════════════════════════════════════════════════════════════════════
-
-const RECORDING_OPTIONS: Audio.RecordingOptions = {
-  android: {
-    extension: '.m4a',
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  web: {
-    mimeType: 'audio/webm',
-    bitsPerSecond: 128000,
-  },
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function useSessionWithAudio(): UseSessionWithAudioReturn {
-  // State
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<SessionResult | null>(null);
-  const [duration, setDuration] = useState(0);
+    const { topicId } = useLocalSearchParams<{ topicId: string }>();
+    const router = useRouter();
 
-  // Refs
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const audioUriRef = useRef<string | null>(null);
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    // FIX: Use currentTopic instead of selectTopicById
+    // The topic is already loaded by TopicDetailScreen before navigating here
+    const topic = useStore(selectCurrentTopic);
 
-  // Store
-  const { addSessionToTopic } = useStore();
+    // Hook d'enregistrement audio
+    const audio = useAudioRecording();
 
-  // Derived state
-  const isRecording = recordingState === 'recording';
-  const isAnalyzing = recordingState === 'analyzing';
+    // État d'analyse
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  /**
-   * Request audio permissions
-   */
-  const requestPermissions = async (): Promise<boolean> => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Microphone permission is required');
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('[useSessionWithAudio] Permission error:', err);
-      setError('Failed to request microphone permission');
-      return false;
-    }
-  };
+    // Derived state pour combiner les états
+    const recordingState: RecordingState = isAnalyzing
+        ? 'analyzing'
+        : audio.isRecording
+            ? 'recording'
+            : 'idle';
 
-  /**
-   * Start audio recording
-   */
-  const startRecording = useCallback(async () => {
-    console.log('[useSessionWithAudio] Starting recording...');
-    setError(null);
-    setResult(null);
+    // ─────────────────────────────────────────────────────────────────────────
+    // HANDLERS
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Check permissions
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    const toggleRecording = useCallback(async () => {
+        if (audio.isRecording) {
+            // Arrêter l'enregistrement
+            const uri = await audio.stopRecording();
 
-    try {
-      // Configure audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+            if (uri) {
+                setIsAnalyzing(true);
 
-      // Create and start recording
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(RECORDING_OPTIONS);
-      await recording.startAsync();
+                // TODO: Implémenter l'appel réel à l'API
+                // Pour l'instant, simulation de l'analyse
+                console.log('[useSessionWithAudio] Audio URI:', uri);
+                console.log('[useSessionWithAudio] Duration:', audio.duration, 'seconds');
 
-      recordingRef.current = recording;
-      setRecordingState('recording');
-      setDuration(0);
+                // Simulation d'analyse (à remplacer par l'appel API réel)
+                setTimeout(() => {
+                    setIsAnalyzing(false);
 
-      // Start duration timer
-      durationIntervalRef.current = setInterval(() => {
-        setDuration((prev) => prev + 1);
-      }, 1000);
+                    // Navigation vers les résultats avec données mock
+                    router.replace({
+                        pathname: `/${topicId}/result`,
+                        params: {
+                            audioUri: uri,
+                            valid: JSON.stringify([
+                                'Point clé 1 correctement énoncé',
+                                'Bonne compréhension du concept',
+                            ]),
+                            corrections: JSON.stringify(['Préciser davantage ce point']),
+                            missing: JSON.stringify(['Concept important non mentionné']),
+                        },
+                    });
+                }, 2000);
+            }
+        } else {
+            // Démarrer l'enregistrement
+            await audio.startRecording();
+        }
+    }, [audio, topicId, router]);
 
-      console.log('[useSessionWithAudio] Recording started');
-    } catch (err) {
-      console.error('[useSessionWithAudio] Start recording error:', err);
-      setError('Failed to start recording');
-      setRecordingState('error');
-    }
-  }, []);
+    const handleClose = useCallback(() => {
+        // Arrêter l'enregistrement si en cours
+        if (audio.isRecording) {
+            audio.stopRecording();
+        }
+        router.back();
+    }, [audio, router]);
 
-  /**
-   * Stop audio recording
-   */
-  const stopRecording = useCallback(async () => {
-    console.log('[useSessionWithAudio] Stopping recording...');
+    // ─────────────────────────────────────────────────────────────────────────
+    // CLEANUP
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Clear duration timer
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
+    useEffect(() => {
+        return () => {
+            // Reset audio state on unmount
+            audio.reset();
+        };
+    }, []);
 
-    if (!recordingRef.current) {
-      console.warn('[useSessionWithAudio] No active recording');
-      return;
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // RETURN
+    // ─────────────────────────────────────────────────────────────────────────
 
-    try {
-      await recordingRef.current.stopAndUnloadAsync();
-      
-      // Reset audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
+    return {
+        // Data
+        topic,
+        recordingState,
+        isRecording: audio.isRecording,
+        isAnalyzing,
+        audioLevel: audio.audioLevel,
+        audioUri: audio.audioUri,
+        error: audio.error,
+        hasPermission: audio.hasPermission,
+        duration: audio.duration,
 
-      const uri = recordingRef.current.getURI();
-      audioUriRef.current = uri;
-      recordingRef.current = null;
-
-      console.log('[useSessionWithAudio] Recording stopped, URI:', uri);
-      setRecordingState('idle');
-    } catch (err) {
-      console.error('[useSessionWithAudio] Stop recording error:', err);
-      setError('Failed to stop recording');
-      setRecordingState('error');
-    }
-  }, []);
-
-  /**
-   * Cancel recording without saving
-   */
-  const cancelRecording = useCallback(async () => {
-    console.log('[useSessionWithAudio] Cancelling recording...');
-
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
-
-    if (recordingRef.current) {
-      try {
-        await recordingRef.current.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-        });
-      } catch (err) {
-        console.error('[useSessionWithAudio] Cancel error:', err);
-      }
-      recordingRef.current = null;
-    }
-
-    audioUriRef.current = null;
-    setRecordingState('idle');
-    setDuration(0);
-    setError(null);
-  }, []);
-
-  /**
-   * Process recorded audio (transcribe + analyze)
-   */
-  const processRecording = useCallback(async (
-    topicId: string,
-    topicTitle: string,
-  ): Promise<SessionResult | null> => {
-    const uri = audioUriRef.current;
-
-    if (!uri) {
-      setError('No recording to process');
-      return null;
-    }
-
-    console.log('[useSessionWithAudio] Processing recording for topic:', topicTitle);
-    setRecordingState('analyzing');
-    setError(null);
-
-    try {
-      // Call API - Transcribe + Analyze
-      const { transcription, analysis } = await LLMService.processRecording(
-        uri,
-        topicTitle,
-        { topicId },
-      );
-
-      // Create session object for local state
-      const newSession: Session = {
-        id: `session-${Date.now()}`, // Server will provide real ID
-        date: new Date().toISOString(),
-        audioUri: uri,
-        transcription,
-        analysis,
-      };
-
-      // Update store
-      addSessionToTopic(topicId, newSession);
-
-      const sessionResult: SessionResult = {
-        transcription,
-        analysis,
-      };
-
-      setResult(sessionResult);
-      setRecordingState('complete');
-
-      console.log('[useSessionWithAudio] Processing complete');
-      return sessionResult;
-    } catch (err) {
-      console.error('[useSessionWithAudio] Processing error:', err);
-      
-      const message = err instanceof ApiException
-        ? err.message
-        : 'Failed to process recording';
-      
-      setError(message);
-      setRecordingState('error');
-      return null;
-    }
-  }, [addSessionToTopic]);
-
-  /**
-   * Reset all state
-   */
-  const reset = useCallback(() => {
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
-
-    recordingRef.current = null;
-    audioUriRef.current = null;
-    
-    setRecordingState('idle');
-    setError(null);
-    setResult(null);
-    setDuration(0);
-  }, []);
-
-  return {
-    // State
-    recordingState,
-    isRecording,
-    isAnalyzing,
-    error,
-    result,
-    duration,
-
-    // Actions
-    startRecording,
-    stopRecording,
-    cancelRecording,
-    processRecording,
-    reset,
-  };
+        // Methods
+        toggleRecording,
+        handleClose,
+        requestPermission: audio.requestPermission,
+    };
 }
+
+export default useSessionWithAudio;

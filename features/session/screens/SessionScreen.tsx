@@ -3,15 +3,16 @@
  * @description Écran d'enregistrement vocal avec animation réactive
  * Version mise à jour avec VoiceRecordButton et useAudioRecording
  *
- * MODIFICATIONS:
- * - Émojis remplacés par des icônes Material
- * - Barre de niveau audio simplifiée (blanc uniquement)
- * - Suppression des mots qui changent selon l'intensité
+ * FIXES:
+ * - Added close button to "Topic introuvable" error state
+ * - Uses currentTopic from store instead of selectTopicById
+ * - Added useSafeAreaInsets for proper header spacing
  */
 
 import React, { memo, useCallback } from 'react';
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -29,6 +30,7 @@ export const SessionScreen = memo(function SessionScreen() {
     // Setup Hook - Logic Controller
     const logic = useSessionWithAudio();
     const insets = useSafeAreaInsets();
+    const router = useRouter();
 
     // ─────────────────────────────────────────────────────────────────────────
     // HELPERS
@@ -40,14 +42,43 @@ export const SessionScreen = memo(function SessionScreen() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }, []);
 
+    const handleClose = useCallback(() => {
+        router.back();
+    }, [router]);
+
     // ─────────────────────────────────────────────────────────────────────────
-    // GUARD: Topic not found
+    // GUARD: Topic not found - FIX: Added close button
     // ─────────────────────────────────────────────────────────────────────────
 
     if (!logic.topic) {
         return (
-            <ScreenWrapper centered>
-                <Text style={styles.errorText}>Topic introuvable</Text>
+            <ScreenWrapper useSafeArea={false} padding={0}>
+                <LinearGradient
+                    colors={[GlassColors.gradient.start, GlassColors.gradient.middle, GlassColors.gradient.end]}
+                    style={styles.gradient}
+                >
+                    {/* Header with close button */}
+                    <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+                        <Pressable style={styles.closeButton} onPress={handleClose}>
+                            <MaterialIcons name="close" size={24} color={GlassColors.text.primary} />
+                        </Pressable>
+                        <Text style={styles.topicTitle}>Session</Text>
+                        <View style={styles.headerSpacer} />
+                    </View>
+
+                    {/* Error content */}
+                    <View style={styles.errorContainer}>
+                        <MaterialIcons
+                            name="error-outline"
+                            size={64}
+                            color={GlassColors.text.tertiary}
+                        />
+                        <Text style={styles.errorText}>Topic introuvable</Text>
+                        <Text style={styles.errorHint}>
+                            Le sujet n'a pas pu être chargé. Veuillez réessayer.
+                        </Text>
+                    </View>
+                </LinearGradient>
             </ScreenWrapper>
         );
     }
@@ -63,14 +94,10 @@ export const SessionScreen = memo(function SessionScreen() {
                 style={styles.gradient}
             >
                 <View style={[styles.container, { paddingTop: insets.top }]}>
-                    {/* Header */}
+                    {/* Header avec bouton fermer */}
                     <View style={styles.header}>
                         <Pressable style={styles.closeButton} onPress={logic.handleClose}>
-                            <MaterialIcons
-                                name="close"
-                                size={24}
-                                color={GlassColors.text.primary}
-                            />
+                            <MaterialIcons name="close" size={24} color={GlassColors.text.primary} />
                         </Pressable>
                         <Text style={styles.topicTitle} numberOfLines={1}>
                             {logic.topic.title}
@@ -78,30 +105,31 @@ export const SessionScreen = memo(function SessionScreen() {
                         <View style={styles.headerSpacer} />
                     </View>
 
-                    {/* Main Content */}
+                    {/* Contenu principal */}
                     <View style={styles.content}>
-                        {/* État d'analyse */}
                         {logic.isAnalyzing ? (
+                            // État d'analyse
                             <View style={styles.analyzingContainer}>
                                 <ActivityIndicator size="large" color={GlassColors.accent.primary} />
                                 <Text style={styles.analyzingText}>Analyse en cours...</Text>
                                 <Text style={styles.analyzingHint}>
-                                    Nous transcrivons et analysons votre réponse
+                                    Veuillez patienter pendant que nous analysons votre réponse
                                 </Text>
                             </View>
                         ) : (
                             <>
-                                {/* Status Text - Icône Material au lieu d'émoji */}
+                                {/* Status */}
                                 <View style={styles.statusContainer}>
                                     <View style={styles.statusRow}>
-                                        {logic.isRecording && (
-                                            <MaterialIcons
-                                                name="fiber-manual-record"
-                                                size={16}
-                                                color={GlassColors.semantic.error}
-                                                style={styles.recordingIcon}
-                                            />
-                                        )}
+                                        <MaterialIcons
+                                            name={logic.isRecording ? 'mic' : 'mic-none'}
+                                            size={24}
+                                            color={
+                                                logic.isRecording
+                                                    ? GlassColors.semantic.error
+                                                    : GlassColors.text.secondary
+                                            }
+                                        />
                                         <Text style={styles.statusText}>
                                             {logic.isRecording ? 'Enregistrement...' : 'Prêt à enregistrer'}
                                         </Text>
@@ -143,28 +171,19 @@ export const SessionScreen = memo(function SessionScreen() {
                                                 {Math.round(logic.audioLevel * 100)}%
                                             </Text>
                                         </View>
-
-                                        {/* Barre de progression blanche */}
+                                        {/* Barre de niveau */}
                                         <View style={styles.levelBarBackground}>
                                             <View
                                                 style={[
                                                     styles.levelBarFill,
-                                                    { width: `${Math.max(5, logic.audioLevel * 100)}%` }
+                                                    { width: `${logic.audioLevel * 100}%` },
                                                 ]}
                                             />
                                         </View>
                                     </View>
                                 )}
 
-                                {/* Afficher l'erreur si présente */}
-                                {logic.error && (
-                                    <View style={styles.errorContainer}>
-                                        <MaterialIcons name="error-outline" size={20} color={GlassColors.semantic.error} />
-                                        <Text style={styles.errorMessage}>{logic.error}</Text>
-                                    </View>
-                                )}
-
-                                {/* Instructions - Icône Material au lieu d'émoji */}
+                                {/* Instructions (only when not recording) */}
                                 {!logic.isRecording && (
                                     <View style={styles.instructionsContainer}>
                                         <View style={styles.instructionRow}>
@@ -232,20 +251,38 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: Spacing.xl,
     },
+    // Error state styles - NEW
+    errorContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.xl,
+    },
+    errorText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: GlassColors.text.primary,
+        marginTop: Spacing.lg,
+    },
+    errorHint: {
+        fontSize: 14,
+        color: GlassColors.text.secondary,
+        marginTop: Spacing.sm,
+        textAlign: 'center',
+    },
+    // Status styles
     statusContainer: {
         alignItems: 'center',
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xxl,
     },
     statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: Spacing.sm,
         marginBottom: Spacing.xs,
     },
-    recordingIcon: {
-        marginRight: Spacing.xs,
-    },
     statusText: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '700',
         color: GlassColors.text.primary,
     },
@@ -254,48 +291,45 @@ const styles = StyleSheet.create({
         color: GlassColors.text.secondary,
         textAlign: 'center',
     },
+    // Timer styles
     timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: Spacing.lg,
+        gap: Spacing.sm,
     },
     timerDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: GlassColors.semantic.error,
-        marginRight: Spacing.sm,
     },
     timerText: {
         fontSize: 32,
-        fontWeight: '300',
+        fontWeight: '700',
         color: GlassColors.text.primary,
         fontVariant: ['tabular-nums'],
     },
+    // Record button
     recordButtonContainer: {
-        marginVertical: Spacing.xl,
+        marginBottom: Spacing.xxl,
     },
-    // ═══════════════════════════════════════════════════════════════
-    // INDICATEUR DE NIVEAU AUDIO - STYLES SIMPLIFIÉS (BLANC)
-    // ═══════════════════════════════════════════════════════════════
+    // Level indicator
     levelIndicatorContainer: {
         width: '100%',
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
-        backgroundColor: GlassColors.glass.backgroundDark,
-        borderRadius: BorderRadius.lg,
-        marginTop: Spacing.md,
+        maxWidth: 280,
+        marginBottom: Spacing.xl,
     },
     levelLabelRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.xs,
     },
     levelLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: GlassColors.text.tertiary,
+        color: GlassColors.text.secondary,
         letterSpacing: 1,
     },
     levelPercentage: {
@@ -312,9 +346,9 @@ const styles = StyleSheet.create({
     levelBarFill: {
         height: '100%',
         borderRadius: 8,
-        backgroundColor: '#FFFFFF', // Barre blanche uniquement
+        backgroundColor: '#FFFFFF',
     },
-    // ═══════════════════════════════════════════════════════════════
+    // Analyzing state
     analyzingContainer: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -331,20 +365,7 @@ const styles = StyleSheet.create({
         marginTop: Spacing.sm,
         textAlign: 'center',
     },
-    errorContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: GlassColors.semantic.errorGlow,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: BorderRadius.md,
-        marginTop: Spacing.md,
-    },
-    errorMessage: {
-        color: GlassColors.semantic.error,
-        fontSize: 14,
-        marginLeft: Spacing.sm,
-    },
+    // Instructions
     instructionsContainer: {
         marginTop: Spacing.xl,
         paddingHorizontal: Spacing.lg,
@@ -360,10 +381,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: GlassColors.text.secondary,
         textAlign: 'center',
-    },
-    errorText: {
-        fontSize: 18,
-        color: GlassColors.text.primary,
     },
 });
 

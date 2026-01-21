@@ -2,25 +2,44 @@
  * @file TopicsListScreen.styles.ts
  * @description Styles pour l'écran de liste des topics
  *
- * FIX: Added styles for loading state, error state, and retry button
+ * FIXES:
+ * - Added topRow style for profile button positioning (top right)
+ * - Updated greetingSection to work with new layout
+ * - Stats row now accommodates 3 cards (including streak)
  */
 
 import { StyleSheet } from 'react-native';
 import { GlassColors, Spacing, BorderRadius, Shadows } from '@/theme';
 
 export const styles = StyleSheet.create({
-    // Fixed Header (en dehors de la FlatList)
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIXED HEADER
+    // ═══════════════════════════════════════════════════════════════════════
     fixedHeader: {
         paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.sm,
     },
 
-    // Greeting
-    greetingSection: {
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOP ROW - Greeting + Profile Button
+    // ═══════════════════════════════════════════════════════════════════════
+    topRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
         marginBottom: Spacing.lg,
     },
-    greetingLeft: {},
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GREETING SECTION
+    // ═══════════════════════════════════════════════════════════════════════
+    greetingSection: {
+        flex: 1,
+    },
+    greetingLeft: {
+        // Kept for backwards compatibility, can be removed
+    },
     greetingRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -37,58 +56,64 @@ export const styles = StyleSheet.create({
         color: GlassColors.text.secondary,
     },
 
-    // Stats
+    // ═══════════════════════════════════════════════════════════════════════
+    // STATS ROW
+    // ═══════════════════════════════════════════════════════════════════════
     statsRow: {
         flexDirection: 'row',
-        gap: Spacing.md,
+        gap: Spacing.sm,
         marginBottom: Spacing.lg,
     },
     statCard: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        padding: Spacing.md,
-        gap: Spacing.sm,
+        padding: Spacing.sm,
+        gap: Spacing.xs,
     },
     statNumber: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: GlassColors.text.primary,
     },
     statLabel: {
-        fontSize: 11,
+        fontSize: 10,
         color: GlassColors.text.secondary,
+        textTransform: 'uppercase',
     },
 
-    // Search
+    // ═══════════════════════════════════════════════════════════════════════
+    // SEARCH
+    // ═══════════════════════════════════════════════════════════════════════
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
         marginBottom: Spacing.md,
+        gap: Spacing.sm,
     },
     searchInput: {
         flex: 1,
-        marginLeft: Spacing.sm,
         fontSize: 16,
         color: GlassColors.text.primary,
-        paddingVertical: Spacing.xs,
     },
 
-    // List Content
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIST CONTENT
+    // ═══════════════════════════════════════════════════════════════════════
     listContent: {
         paddingHorizontal: Spacing.lg,
         paddingBottom: 100,
         flexGrow: 1,
     },
-
-    // List Header (dans la FlatList)
     listHeader: {
         marginBottom: Spacing.md,
     },
 
-    // Section header
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION HEADER
+    // ═══════════════════════════════════════════════════════════════════════
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -102,10 +127,12 @@ export const styles = StyleSheet.create({
     },
     sectionCount: {
         fontSize: 14,
-        color: GlassColors.text.secondary,
+        color: GlassColors.text.tertiary,
     },
 
-    // Swipe hint
+    // ═══════════════════════════════════════════════════════════════════════
+    // SWIPE HINT
+    // ═══════════════════════════════════════════════════════════════════════
     swipeHintContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -115,10 +142,11 @@ export const styles = StyleSheet.create({
     swipeHint: {
         fontSize: 12,
         color: GlassColors.text.tertiary,
-        fontStyle: 'italic',
     },
 
-    // Active filters bar
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACTIVE FILTERS
+    // ═══════════════════════════════════════════════════════════════════════
     activeFiltersBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -126,7 +154,7 @@ export const styles = StyleSheet.create({
         gap: Spacing.xs,
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.md,
-        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        backgroundColor: 'rgba(0, 212, 255, 0.1)',
         borderRadius: BorderRadius.md,
         marginBottom: Spacing.sm,
     },
@@ -136,7 +164,23 @@ export const styles = StyleSheet.create({
         fontWeight: '500',
     },
 
-    // Empty state
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOADING STATE
+    // ═══════════════════════════════════════════════════════════════════════
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingText: {
+        fontSize: 16,
+        color: GlassColors.text.secondary,
+        marginTop: Spacing.md,
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMPTY STATE
+    // ═══════════════════════════════════════════════════════════════════════
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
@@ -165,13 +209,22 @@ export const styles = StyleSheet.create({
         maxWidth: 280,
     },
 
-    // Retry button (for error state)
+    // ═══════════════════════════════════════════════════════════════════════
+    // ERROR STATE
+    // ═══════════════════════════════════════════════════════════════════════
     retryButton: {
         marginTop: Spacing.lg,
         minWidth: 160,
     },
+    errorText: {
+        fontSize: 16,
+        color: GlassColors.semantic.error,
+        textAlign: 'center',
+    },
 
+    // ═══════════════════════════════════════════════════════════════════════
     // FAB (Floating Action Button)
+    // ═══════════════════════════════════════════════════════════════════════
     fabContainer: {
         position: 'absolute',
         bottom: Spacing.xl,
@@ -184,12 +237,5 @@ export const styles = StyleSheet.create({
         borderRadius: 30,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-
-    // Error text
-    errorText: {
-        fontSize: 16,
-        color: GlassColors.semantic.error,
-        textAlign: 'center',
     },
 });

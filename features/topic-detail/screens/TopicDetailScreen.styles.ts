@@ -2,7 +2,10 @@
  * @file TopicDetailScreen.styles.ts
  * @description Styles pour l'écran de détail d'un topic
  *
- * FIX: Added styles for loading state, error state, retry button, and FAB
+ * FIXES:
+ * - Added navigation header styles (navHeader, backButton, navTitle, headerSpacer)
+ * - Added error state container styles
+ * - Fixed FAB positioning with fabContainer to prevent overflow
  */
 
 import { StyleSheet } from 'react-native';
@@ -14,8 +17,39 @@ export const styles = StyleSheet.create({
     // ═══════════════════════════════════════════════════════════════════════
     listContent: {
         padding: Spacing.lg,
-        paddingBottom: 100,
+        paddingBottom: 120, // Extra space for FAB
         flexGrow: 1,
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // NAVIGATION HEADER
+    // ═══════════════════════════════════════════════════════════════════════
+    navHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.md,
+        marginBottom: Spacing.md,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: GlassColors.glass.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    navTitle: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '600',
+        color: GlassColors.text.primary,
+        textAlign: 'center',
+        marginHorizontal: Spacing.md,
+    },
+    headerSpacer: {
+        width: 40,
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -69,6 +103,12 @@ export const styles = StyleSheet.create({
     // ═══════════════════════════════════════════════════════════════════════
     // ERROR STATE
     // ═══════════════════════════════════════════════════════════════════════
+    errorStateContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.xl,
+    },
     errorText: {
         color: GlassColors.text.secondary,
         fontSize: 16,
@@ -120,13 +160,19 @@ export const styles = StyleSheet.create({
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FAB (Floating Action Button)
+    // FAB (Floating Action Button) - FIXED: Using container for proper bounds
     // ═══════════════════════════════════════════════════════════════════════
-    fab: {
+    fabContainer: {
         position: 'absolute',
-        bottom: Spacing.xl,
-        right: Spacing.lg,
-        left: Spacing.lg,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.md,
+        // Background gradient for visual separation (optional)
+        backgroundColor: 'transparent',
+    },
+    fab: {
         ...Shadows.medium,
     },
 });
