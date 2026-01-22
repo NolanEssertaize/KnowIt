@@ -1,15 +1,15 @@
 /**
  * @file TopicsListScreen.styles.ts
- * @description Styles pour l'écran de liste des topics
+ * @description Styles pour l'écran de liste des topics - Monochrome Theme
  *
  * FIXES:
- * - Added topRow style for profile button positioning (top right)
- * - Updated greetingSection to work with new layout
- * - Stats row now accommodates 3 cards (including streak)
+ * - Stats values: WHITE text (was black on black)
+ * - FAB: Solid WHITE background with BLACK icon
+ * - All text explicitly white for dark mode
  */
 
-import { StyleSheet } from 'react-native';
-import { GlassColors, Spacing, BorderRadius, Shadows } from '@/theme';
+import { StyleSheet, Platform } from 'react-native';
+import { Spacing, BorderRadius, FontSize, FontWeight } from '@/theme';
 
 export const styles = StyleSheet.create({
     // ═══════════════════════════════════════════════════════════════════════
@@ -37,76 +37,96 @@ export const styles = StyleSheet.create({
     greetingSection: {
         flex: 1,
     },
+
     greetingLeft: {
-        // Kept for backwards compatibility, can be removed
+        // Kept for backwards compatibility
     },
+
     greetingRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: Spacing.xs,
         gap: Spacing.sm,
     },
+
     greeting: {
         fontSize: 28,
         fontWeight: '700',
-        color: GlassColors.text.primary,
+        color: '#FFFFFF', // Explicit white
     },
+
     subtitle: {
         fontSize: 16,
-        color: GlassColors.text.secondary,
+        color: 'rgba(255, 255, 255, 0.7)',
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // STATS ROW
+    // STATS ROW - FIX: All text WHITE
     // ═══════════════════════════════════════════════════════════════════════
     statsRow: {
         flexDirection: 'row',
         gap: Spacing.sm,
         marginBottom: Spacing.lg,
     },
+
     statCard: {
         flex: 1,
-        flexDirection: 'row',
+        padding: Spacing.md,
+        borderRadius: BorderRadius.lg,
         alignItems: 'center',
-        padding: Spacing.sm,
         gap: Spacing.xs,
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    statNumber: {
-        fontSize: 18,
+
+    statIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // FIX: Explicit WHITE color for stat values
+    statValue: {
+        fontSize: 24,
         fontWeight: '700',
-        color: GlassColors.text.primary,
+        color: '#FFFFFF', // WAS: GlassColors.text.primary (could be black)
     },
+
     statLabel: {
         fontSize: 10,
-        color: GlassColors.text.secondary,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.5)',
         textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SEARCH
+    // SEARCH CONTAINER
     // ═══════════════════════════════════════════════════════════════════════
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
-        marginBottom: Spacing.md,
+        borderRadius: BorderRadius.lg,
         gap: Spacing.sm,
+        marginBottom: Spacing.sm,
     },
+
     searchInput: {
         flex: 1,
         fontSize: 16,
-        color: GlassColors.text.primary,
+        color: '#FFFFFF',
+        paddingVertical: Spacing.xs,
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // LIST CONTENT
+    // LIST HEADER
     // ═══════════════════════════════════════════════════════════════════════
-    listContent: {
-        paddingHorizontal: Spacing.lg,
-        paddingBottom: 100,
-        flexGrow: 1,
-    },
     listHeader: {
         marginBottom: Spacing.md,
     },
@@ -120,14 +140,16 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: Spacing.sm,
     },
+
     sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: GlassColors.text.primary,
+        color: '#FFFFFF',
     },
+
     sectionCount: {
         fontSize: 14,
-        color: GlassColors.text.tertiary,
+        color: 'rgba(255, 255, 255, 0.5)',
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -139,13 +161,14 @@ export const styles = StyleSheet.create({
         gap: Spacing.xs,
         marginBottom: Spacing.sm,
     },
+
     swipeHint: {
         fontSize: 12,
-        color: GlassColors.text.tertiary,
+        color: 'rgba(255, 255, 255, 0.4)',
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ACTIVE FILTERS
+    // ACTIVE FILTERS - Monochrome
     // ═══════════════════════════════════════════════════════════════════════
     activeFiltersBar: {
         flexDirection: 'row',
@@ -154,14 +177,25 @@ export const styles = StyleSheet.create({
         gap: Spacing.xs,
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.md,
-        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
         borderRadius: BorderRadius.md,
         marginBottom: Spacing.sm,
     },
+
     activeFiltersText: {
         fontSize: 12,
-        color: GlassColors.accent.primary,
+        color: '#FFFFFF',
         fontWeight: '500',
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIST CONTENT
+    // ═══════════════════════════════════════════════════════════════════════
+    listContent: {
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: 120, // Space for FAB
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -172,9 +206,10 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     loadingText: {
         fontSize: 16,
-        color: GlassColors.text.secondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginTop: Spacing.md,
     },
 
@@ -185,57 +220,65 @@ export const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        paddingHorizontal: Spacing.xl,
         paddingVertical: Spacing.xxl,
-        paddingHorizontal: Spacing.lg,
     },
+
     emptyIcon: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: Spacing.lg,
-        opacity: 0.8,
-        borderRadius: BorderRadius.lg,
-        padding: Spacing.md,
     },
+
     emptyTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: GlassColors.text.primary,
+        color: '#FFFFFF',
+        textAlign: 'center',
         marginBottom: Spacing.sm,
-        textAlign: 'center',
     },
+
     emptySubtitle: {
-        fontSize: 14,
-        color: GlassColors.text.secondary,
-        textAlign: 'center',
-        lineHeight: 20,
-        maxWidth: 280,
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // ERROR STATE
-    // ═══════════════════════════════════════════════════════════════════════
-    retryButton: {
-        marginTop: Spacing.lg,
-        minWidth: 160,
-    },
-    errorText: {
         fontSize: 16,
-        color: GlassColors.semantic.error,
+        color: 'rgba(255, 255, 255, 0.6)',
         textAlign: 'center',
+        lineHeight: 22,
     },
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FAB (Floating Action Button)
+    // FAB (Floating Action Button) - HIGH CONTRAST
     // ═══════════════════════════════════════════════════════════════════════
     fabContainer: {
         position: 'absolute',
         bottom: Spacing.xl,
         right: Spacing.lg,
-        ...Shadows.medium,
     },
-    fabGradient: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+
+    // SOLID WHITE FAB with shadow
+    fab: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
+        // HIGH CONTRAST: Solid WHITE background
+        backgroundColor: '#FFFFFF',
+        // Shadow for visibility
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 8,
+            },
+        }),
     },
+
+    // REMOVED: fabGradient - No more gradients
 });

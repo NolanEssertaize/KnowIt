@@ -1,15 +1,15 @@
 /**
  * @file TopicCard.tsx
- * @description Carte de topic avec swipe actions
+ * @description Carte de topic avec swipe actions - Monochrome Theme
  *
- * MODIFICATIONS:
- * - Correction du bug où le slide déclenche le clic sur le topic
- * - Ajout du tracking de l'état de swipe pour empêcher le clic pendant/après le swipe
+ * FIXES:
+ * - Swipe action buttons use HIGH CONTRAST colors
+ * - Delete button: White bg + Black icon
+ * - Edit/Share buttons: Glass bg + White icon with visible border
  */
 
 import React, { memo, useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import ReanimatedSwipeable, {
     type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -21,8 +21,7 @@ import Reanimated, {
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import type { TopicItemData } from '../../hooks/useTopicsList';
-import { GlassColors } from '@/theme';
-import { styles } from './TopicCard.styles';
+import { Spacing, BorderRadius } from '@/theme';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -39,7 +38,7 @@ interface TopicCardProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SWIPE ACTIONS
+// SWIPE ACTIONS - HIGH CONTRAST
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface RightActionsProps {
@@ -66,21 +65,47 @@ const RightActions = memo(function RightActions({
 
     return (
         <Reanimated.View style={[styles.actionsContainer, animatedStyle]}>
-            <Pressable style={[styles.actionButton, styles.editButton]} onPress={onEdit}>
+            {/* Edit Button - Glass style */}
+            <Pressable
+                style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.editButton,
+                    pressed && styles.actionButtonPressed,
+                ]}
+                onPress={onEdit}
+            >
                 <MaterialIcons name="edit" size={20} color="#FFFFFF" />
             </Pressable>
-            <Pressable style={[styles.actionButton, styles.shareButton]} onPress={onShare}>
+
+            {/* Share Button - Glass style */}
+            <Pressable
+                style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.shareButton,
+                    pressed && styles.actionButtonPressed,
+                ]}
+                onPress={onShare}
+            >
                 <MaterialIcons name="share" size={20} color="#FFFFFF" />
             </Pressable>
-            <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={onDelete}>
-                <MaterialIcons name="delete" size={20} color="#FFFFFF" />
+
+            {/* Delete Button - HIGH CONTRAST (White bg, Black icon) */}
+            <Pressable
+                style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.deleteButton,
+                    pressed && styles.actionButtonPressed,
+                ]}
+                onPress={onDelete}
+            >
+                <MaterialIcons name="delete" size={20} color="#000000" />
             </Pressable>
         </Reanimated.View>
     );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COMPOSANT PRINCIPAL
+// MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TopicCard = memo(function TopicCard({
@@ -95,11 +120,8 @@ export const TopicCard = memo(function TopicCard({
     const swipeableRef = useRef<SwipeableMethods>(null);
     const { topic, theme, lastSessionDate } = data;
 
-    // État pour tracker si le swipeable est ouvert ou en cours d'ouverture
     const [isSwipeOpen, setIsSwipeOpen] = useState(false);
-    // Ref pour tracker si un swipe est en cours (pour éviter les clics pendant le swipe)
     const isSwipingRef = useRef(false);
-    // Timeout ref pour réinitialiser l'état après un court délai
     const swipeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -108,23 +130,19 @@ export const TopicCard = memo(function TopicCard({
         }
         return () => {
             unregisterRef();
-            // Nettoyer le timeout si le composant est démonté
             if (swipeTimeoutRef.current) {
                 clearTimeout(swipeTimeoutRef.current);
             }
         };
     }, [registerRef, unregisterRef]);
 
-    // Callback quand le swipe commence
     const handleSwipeableWillOpen = useCallback(() => {
         isSwipingRef.current = true;
         setIsSwipeOpen(true);
     }, []);
 
-    // Callback quand le swipe est complètement ouvert
     const handleSwipeableOpen = useCallback(() => {
         setIsSwipeOpen(true);
-        // Réinitialiser le flag de swipe en cours après un court délai
         if (swipeTimeoutRef.current) {
             clearTimeout(swipeTimeoutRef.current);
         }
@@ -133,16 +151,12 @@ export const TopicCard = memo(function TopicCard({
         }, 100);
     }, []);
 
-    // Callback quand le swipe commence à se fermer
     const handleSwipeableWillClose = useCallback(() => {
         isSwipingRef.current = true;
     }, []);
 
-    // Callback quand le swipe est complètement fermé
     const handleSwipeableClose = useCallback(() => {
         setIsSwipeOpen(false);
-        // Réinitialiser le flag de swipe en cours après un court délai
-        // pour éviter que le clic soit déclenché immédiatement après la fermeture
         if (swipeTimeoutRef.current) {
             clearTimeout(swipeTimeoutRef.current);
         }
@@ -151,13 +165,8 @@ export const TopicCard = memo(function TopicCard({
         }, 150);
     }, []);
 
-    // Handler de clic sécurisé
     const handleCardPress = useCallback(() => {
-        // Ne pas déclencher le clic si :
-        // 1. Le swipe est ouvert
-        // 2. Un swipe est en cours
         if (isSwipeOpen || isSwipingRef.current) {
-            // Si le swipe est ouvert, on le ferme au lieu de naviguer
             if (isSwipeOpen && swipeableRef.current) {
                 swipeableRef.current.close();
             }
@@ -192,26 +201,22 @@ export const TopicCard = memo(function TopicCard({
                 onSwipeableClose={handleSwipeableClose}
             >
                 <Pressable
-                    style={styles.card}
+                    style={({ pressed }) => [
+                        styles.card,
+                        pressed && styles.cardPressed,
+                    ]}
                     onPress={handleCardPress}
-                    // Désactiver le retour haptique pendant le swipe
-                    android_disableSound={isSwipingRef.current}
                 >
-                    {/* Icône thématique */}
-                    <LinearGradient
-                        colors={theme.gradient as [string, string]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.iconContainer}
-                    >
+                    {/* Topic Icon Container */}
+                    <View style={styles.iconContainer}>
                         <MaterialCommunityIcons
                             name={theme.icon as keyof typeof MaterialCommunityIcons.glyphMap}
                             size={26}
                             color="#FFFFFF"
                         />
-                    </LinearGradient>
+                    </View>
 
-                    {/* Infos du topic */}
+                    {/* Topic Info */}
                     <View style={styles.topicInfo}>
                         <Text style={styles.topicTitle} numberOfLines={1}>
                             {topic.title}
@@ -221,7 +226,7 @@ export const TopicCard = memo(function TopicCard({
                                 <MaterialCommunityIcons
                                     name="text-box-outline"
                                     size={14}
-                                    color={GlassColors.text.secondary}
+                                    color="rgba(255,255,255,0.6)"
                                 />
                                 <Text style={styles.metaText}>
                                     {topic.sessions.length} session{topic.sessions.length !== 1 ? 's' : ''}
@@ -232,7 +237,7 @@ export const TopicCard = memo(function TopicCard({
                                 <MaterialCommunityIcons
                                     name="clock-outline"
                                     size={14}
-                                    color={GlassColors.text.secondary}
+                                    color="rgba(255,255,255,0.6)"
                                 />
                                 <Text style={styles.metaText}>{lastSessionDate}</Text>
                             </View>
@@ -241,14 +246,138 @@ export const TopicCard = memo(function TopicCard({
 
                     {/* Chevron */}
                     <View style={styles.chevronContainer}>
-                        <MaterialIcons
-                            name="chevron-right"
-                            size={24}
-                            color={GlassColors.accent.primary}
-                        />
+                        <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.4)" />
                     </View>
                 </Pressable>
             </ReanimatedSwipeable>
         </View>
     );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES - Monochrome Theme
+// ═══════════════════════════════════════════════════════════════════════════
+
+const styles = StyleSheet.create({
+    swipeableContainer: {
+        marginBottom: Spacing.md,
+    },
+
+    card: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        borderRadius: BorderRadius.lg,
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+
+    cardPressed: {
+        opacity: 0.8,
+    },
+
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: Spacing.md,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+
+    topicInfo: {
+        flex: 1,
+    },
+
+    topicTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        marginBottom: Spacing.xs,
+    },
+
+    topicMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+
+    metaText: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.6)',
+    },
+
+    metaDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        marginHorizontal: Spacing.sm,
+    },
+
+    chevronContainer: {
+        padding: Spacing.xs,
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SWIPE ACTIONS - HIGH CONTRAST
+    // ═══════════════════════════════════════════════════════════════════════
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: Spacing.sm,
+    },
+
+    actionButton: {
+        width: 48,
+        height: 48,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: Spacing.xs,
+    },
+
+    actionButtonPressed: {
+        opacity: 0.7,
+        transform: [{ scale: 0.95 }],
+    },
+
+    // Edit button - Glass style with border
+    editButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+
+    // Share button - Glass style with border
+    shareButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+
+    // Delete button - HIGH CONTRAST (White bg, Black icon)
+    deleteButton: {
+        backgroundColor: '#FFFFFF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+});
+
+export default TopicCard;
