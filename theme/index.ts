@@ -1,17 +1,100 @@
 /**
  * @file index.ts
- * @description Re-export de tous les tokens du design system
+ * @description Theme module exports
+ *
+ * Usage:
+ * import { useTheme, ThemeProvider, GlassColors } from '@/theme';
  */
 
-export { GlassColors, type GlassColorsType } from './colors';
-export { Spacing, type SpacingType, type SpacingKey } from './spacing';
-export { BorderRadius, type BorderRadiusType, type BorderRadiusKey } from './borders';
-export { Shadows, type ShadowsType } from './shadows';
+// ═══════════════════════════════════════════════════════════════════════════
+// COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+
 export {
+  GlassColors,
+  createGlassColors,
+  MonochromeColors,
+} from './colors';
+
+export type {
+  GlassColorsType,
+  MonochromeColorsType,
+  ThemeColors,
+} from './colors';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THEME CONTEXT & HOOKS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  ThemeProvider,
+  useTheme,
+  useThemeColors,
+} from './ThemeContext';
+
+export type {
+  ThemeMode,
+  ThemeContextValue,
+} from './ThemeContext';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THEME SELECTOR COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  ThemeSelector,
+  ThemeSegmentedControl,
+  ThemeSelectorInline,
+} from './ThemeSelector';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THEMED STYLES HOOK
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  useThemedStyles,
+  useCommonThemedStyles,
+  createThemedStyleFactory,
+} from './useThemedStyles';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DESIGN TOKENS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  // Spacing
+  Spacing,
+  
+  // Border Radius
+  BorderRadius,
+  
+  // Shadows
+  Shadows,
+  createShadows,
+  
+  // Typography
   FontFamily,
   FontSize,
   FontWeight,
   LineHeight,
-  type FontSizeType,
-  type FontWeightType,
-} from './typography';
+  
+  // Glass materials
+  GlassMaterials,
+  
+  // Animation
+  Duration,
+  
+  // Legacy colors
+  Colors,
+} from './theme';
+
+export type {
+  SpacingType,
+  SpacingKey,
+  BorderRadiusType,
+  BorderRadiusKey,
+  ShadowsType,
+  FontSizeType,
+  FontWeightType,
+  DurationType,
+} from './theme';

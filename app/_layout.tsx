@@ -1,22 +1,25 @@
 /**
  * @file _layout.tsx
- * @description Root Layout - Monochrome Theme with Modal Profile
+ * @description Root Layout - Connection-first initialization with Theme Support
  *
- * REWORK:
- * - Profile screen uses modal presentation (slides from bottom)
- * - Transparent background for modal overlay
- * - Native platform transitions
+ * Flow:
+ * 1. Show connecting screen
+ * 2. Health check API with retry
+ * 3. Once connected, check auth state
+ * 4. Navigate to login or main app
+ *
+ * UPDATED: Added ThemeProvider for Light/Dark/System theme support
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/store';
 import { api } from '@/shared/api';
-import { Shadows } from '@/theme';
+import { ThemeProvider, useTheme } from '@/theme';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -26,6 +29,8 @@ type ConnectionState = 'connecting' | 'connected' | 'failed';
 
 /**
  * Connection Gate Component
+ * Blocks app until API connection is established
+ * Now theme-aware!
  */
 function ConnectionGate({ children }: { children: React.ReactNode }) {
     const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
@@ -34,6 +39,12 @@ function ConnectionGate({ children }: { children: React.ReactNode }) {
 
     const { initialize, isInitialized } = useAuthStore();
 
+    // Get theme colors
+    const { colors, isDark } = useTheme();
+
+    /**
+     * Attempt connection to API
+     */
     const connectToApi = useCallback(async () => {
         setConnectionState('connecting');
         setError(null);
@@ -41,12 +52,17 @@ function ConnectionGate({ children }: { children: React.ReactNode }) {
         console.log(`[ConnectionGate] Connection attempt ${attempt}...`);
 
         try {
+            // Health check
             const isConnected = await api.checkConnection(1);
 
             if (isConnected) {
                 console.log('[ConnectionGate] API connected');
                 setConnectionState('connected');
+
+                // Initialize auth after connection established
                 await initialize();
+
+                // Hide splash screen
                 SplashScreen.hideAsync();
             } else {
                 throw new Error('Health check failed');
@@ -55,6 +71,7 @@ function ConnectionGate({ children }: { children: React.ReactNode }) {
             console.log(`[ConnectionGate] Connection attempt ${attempt} failed`);
             setError('Unable to connect to server');
 
+            // Auto retry after delay
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
             console.log(`[ConnectionGate] Retrying in ${delay}ms...`);
 
@@ -64,31 +81,41 @@ function ConnectionGate({ children }: { children: React.ReactNode }) {
         }
     }, [attempt, initialize]);
 
+    // Connect on mount and on retry
     useEffect(() => {
         connectToApi();
     }, [attempt]);
 
+    // Show connecting screen until connected and auth initialized
     if (connectionState !== 'connected' || !isInitialized) {
         return (
-            <View style={styles.container}>
-                <StatusBar style="light" />
+            <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+                <StatusBar style={isDark ? 'light' : 'dark'} />
 
-                {/* Logo - Monochrome */}
+                {/* Logo */}
                 <View style={styles.logoContainer}>
-                    <View style={styles.logoOuter}>
-                        <View style={styles.logoMiddle}>
-                            <View style={styles.logoInner}>
-                                <Text style={styles.logoText}>K</Text>
+                    <View style={[
+                        styles.logoOuter,
+                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }
+                    ]}>
+                        <View style={[
+                            styles.logoMiddle,
+                            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.08)' }
+                        ]}>
+                            <View style={[styles.logoInner, { backgroundColor: colors.text.primary }]}>
+                                <Text style={[styles.logoText, { color: colors.text.inverse }]}>K</Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                <Text style={styles.appName}>KnowIt</Text>
+                {/* App Name */}
+                <Text style={[styles.appName, { color: colors.text.primary }]}>KnowIt</Text>
 
+                {/* Status */}
                 <View style={styles.statusContainer}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.statusText}>
+                    <ActivityIndicator size="small" color={colors.text.primary} />
+                    <Text style={[styles.statusText, { color: colors.text.secondary }]}>
                         {error ? `Connecting... (attempt ${attempt})` : 'Connecting to server...'}
                     </Text>
                 </View>
@@ -124,113 +151,105 @@ function AuthNavigator({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * Themed App Content
+ * This component has access to useTheme() because it's inside ThemeProvider
+ */
+function ThemedAppContent() {
+    const { colors, isDark } = useTheme();
+
+    return (
+        <ConnectionGate>
+            <AuthNavigator>
+                <StatusBar style={isDark ? 'light' : 'dark'} />
+                <Stack
+                    screenOptions={{
+                        headerShown: false,
+                        contentStyle: {
+                            backgroundColor: colors.background.primary,
+                        },
+                        animation: 'fade',
+                    }}
+                >
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="index" />
+                    <Stack.Screen
+                        name="[topicId]/index"
+                        options={{ animation: 'slide_from_right' }}
+                    />
+                    <Stack.Screen
+                        name="[topicId]/session"
+                        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                        name="[topicId]/result"
+                        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                    />
+                </Stack>
+            </AuthNavigator>
+        </ConnectionGate>
+    );
+}
+
+/**
  * Root Layout Component
+ * Wraps entire app with ThemeProvider
  */
 export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <ConnectionGate>
-                <AuthNavigator>
-                    <StatusBar style="light" />
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: '#000000' },
-                            animation: 'slide_from_right',
-                        }}
-                    >
-                        <Stack.Screen name="index" />
-
-                        {/* Profile - Modal presentation (slides from bottom) */}
-                        <Stack.Screen
-                            name="profile"
-                            options={{
-                                presentation: 'transparentModal',
-                                animation: 'fade',
-                                contentStyle: { backgroundColor: 'transparent' },
-                            }}
-                        />
-
-                        <Stack.Screen name="[topicId]" />
-                        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-                    </Stack>
-                </AuthNavigator>
-            </ConnectionGate>
+            <ThemeProvider>
+                <ThemedAppContent />
+            </ThemeProvider>
         </GestureHandlerRootView>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STYLES - Monochrome Theme
-// ═══════════════════════════════════════════════════════════════════════════
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000000',
-        alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
+        alignItems: 'center',
+        paddingHorizontal: 32,
     },
-
     logoContainer: {
         marginBottom: 24,
     },
-
     logoOuter: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        alignItems: 'center',
         justifyContent: 'center',
-        ...Shadows.glassLight,
+        alignItems: 'center',
     },
-
     logoMiddle: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
     },
-
     logoInner: {
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
     },
-
     logoText: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#000000',
     },
-
     appName: {
         fontSize: 32,
         fontWeight: '700',
-        color: '#FFFFFF',
         marginBottom: 48,
-        letterSpacing: 1,
     },
-
     statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-
     statusText: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
     },
 });
