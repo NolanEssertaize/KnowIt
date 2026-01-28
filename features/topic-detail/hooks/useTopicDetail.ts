@@ -4,10 +4,13 @@
  *
  * Pattern: MVVM - This hook serves as the ViewModel for topic detail view
  *
- * FIX: Added proper topicId parameter handling and SessionItemData type export
+ * FIX:
+ * - Sessions are now transformed to SessionItemData with formattedDate
+ * - Added refreshSessions method
+ * - Added handleSessionPress for navigation
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useStore, selectCurrentTopic, selectIsLoading, selectError } from '@/store';
 import type { Topic, Session } from '@/store';
@@ -27,7 +30,7 @@ export interface SessionItemData {
 interface UseTopicDetailReturn {
     // State
     topic: Topic | null;
-    sessions: Session[];
+    sessions: SessionItemData[]; // Changed from Session[] to SessionItemData[]
     isLoading: boolean;
     error: string | null;
     isEditModalVisible: boolean;
@@ -36,13 +39,40 @@ interface UseTopicDetailReturn {
     // Actions
     loadTopicDetail: (topicId: string) => Promise<Topic | null>;
     refreshTopic: () => Promise<void>;
+    refreshSessions: () => Promise<void>;
     handleUpdateTitle: () => Promise<void>;
     handleDeleteTopic: () => Promise<void>;
     handleStartSession: () => void;
+    handleSessionPress: (sessionId: string) => void;
     setEditTitle: (title: string) => void;
     showEditModal: () => void;
     hideEditModal: () => void;
     clearError: () => void;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Format date to relative or absolute string
+ */
+function formatSessionDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        // Today - show time
+        return `Aujourd'hui à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+        return 'Hier';
+    } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+    } else {
+        return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,8 +97,26 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
         clearError: clearStoreError,
     } = useStore();
 
-    // Derived state
-    const sessions = topic?.sessions || [];
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIX: Transform sessions to SessionItemData with formattedDate
+    // ═══════════════════════════════════════════════════════════════════════
+    const sessions: SessionItemData[] = useMemo(() => {
+        const rawSessions = topic?.sessions || [];
+
+        return rawSessions
+            .filter((session): session is Session => {
+                // Filter out undefined/null sessions
+                return session !== undefined && session !== null && typeof session.id === 'string';
+            })
+            .map((session) => ({
+                session,
+                formattedDate: formatSessionDate(session.date),
+            }))
+            .sort((a, b) => {
+                // Sort by date descending (newest first)
+                return new Date(b.session.date).getTime() - new Date(a.session.date).getTime();
+            });
+    }, [topic?.sessions]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Load topic detail on mount or when topicId changes
@@ -93,6 +141,16 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     const refreshTopic = useCallback(async () => {
         if (topicId) {
             console.log('[useTopicDetail] Refreshing topic:', topicId);
+            await loadTopicDetailFromStore(topicId);
+        }
+    }, [topicId, loadTopicDetailFromStore]);
+
+    /**
+     * Refresh sessions (same as refreshTopic for now)
+     */
+    const refreshSessions = useCallback(async () => {
+        if (topicId) {
+            console.log('[useTopicDetail] Refreshing sessions for topic:', topicId);
             await loadTopicDetailFromStore(topicId);
         }
     }, [topicId, loadTopicDetailFromStore]);
@@ -137,6 +195,18 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     }, [topicId, router]);
 
     /**
+     * Navigate to session result screen
+     */
+    const handleSessionPress = useCallback((sessionId: string) => {
+        if (topicId) {
+            console.log('[useTopicDetail] Opening session:', sessionId);
+            // Navigate to result screen with session data
+            // You might need to adjust this based on your routing structure
+            router.push(`/${topicId}/result?sessionId=${sessionId}`);
+        }
+    }, [topicId, router]);
+
+    /**
      * Show edit modal
      */
     const showEditModal = useCallback(() => {
@@ -162,7 +232,7 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     return {
         // State
         topic,
-        sessions,
+        sessions, // Now returns SessionItemData[]
         isLoading,
         error,
         isEditModalVisible,
@@ -171,9 +241,11 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
         // Actions
         loadTopicDetail,
         refreshTopic,
+        refreshSessions,
         handleUpdateTitle,
         handleDeleteTopic,
         handleStartSession,
+        handleSessionPress,
         setEditTitle,
         showEditModal,
         hideEditModal,
