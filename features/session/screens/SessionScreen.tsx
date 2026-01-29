@@ -1,91 +1,130 @@
 /**
  * @file SessionScreen.tsx
- * @description Écran d'enregistrement vocal - Theme Aware
+ * @description Session Recording Screen - Theme Aware, Internationalized
  *
- * FIXED: All colors now use useTheme() hook
+ * UPDATED: All hardcoded strings replaced with i18n translations
  */
 
 import React, { memo, useCallback } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    ActivityIndicator,
+    StyleSheet,
+    StatusBar,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
-import { GlassView } from '@/shared/components';
+import { ScreenWrapper, GlassView, GlassButton } from '@/shared/components';
 import { useTheme, Spacing, BorderRadius } from '@/theme';
+import { formatDuration } from '@/i18n';
 
-import { VoiceRecordButton } from '../components/VoiceRecordButton';
 import { useSessionWithAudio } from '../hooks/useSessionWithAudio';
+import { VoiceRecordButton } from '../components/VoiceRecordButton';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COMPOSANT
+// COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const SessionScreen = memo(function SessionScreen() {
-    const logic = useSessionWithAudio();
-    const insets = useSafeAreaInsets();
+function SessionScreenComponent() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { colors, isDark } = useTheme();
+    const { t } = useTranslation();
+
+    const logic = useSessionWithAudio();
 
     // ─────────────────────────────────────────────────────────────────────────
-    // HELPERS
+    // HANDLERS
     // ─────────────────────────────────────────────────────────────────────────
-
-    const formatDuration = useCallback((seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }, []);
 
     const handleClose = useCallback(() => {
         router.back();
     }, [router]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // GUARD: Topic not found
-    // ─────────────────────────────────────────────────────────────────────────
-
-    if (!logic.topic) {
-        return (
-            <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
-                <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-                <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
-                    <Text style={[styles.errorText, { color: colors.text.secondary }]}>
-                        Topic introuvable
-                    </Text>
-                    <Pressable
-                        style={[styles.closeButtonLarge, { backgroundColor: colors.text.primary }]}
-                        onPress={handleClose}
-                    >
-                        <Text style={[styles.closeButtonText, { color: colors.text.inverse }]}>
-                            Retour
-                        </Text>
-                    </Pressable>
-                </View>
-            </View>
-        );
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ANALYZING STATE
+    // RENDER: ANALYZING STATE
     // ─────────────────────────────────────────────────────────────────────────
 
     if (logic.isAnalyzing) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+            <ScreenWrapper useSafeArea={false}>
                 <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-                <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
-                    <View style={styles.analyzingContainer}>
-                        <ActivityIndicator size="large" color={colors.text.primary} />
-                        <Text style={[styles.analyzingText, { color: colors.text.primary }]}>
-                            Analyse en cours...
+                <View style={[styles.container, { paddingTop: insets.top }]}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={styles.headerSpacer} />
+                        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+                            {t('session.title')}
                         </Text>
-                        <Text style={[styles.analyzingHint, { color: colors.text.secondary }]}>
-                            Votre explication est en train d'être analysée
-                        </Text>
+                        <View style={styles.headerSpacer} />
+                    </View>
+
+                    {/* Analyzing Content */}
+                    <View style={styles.content}>
+                        <View style={styles.analyzingContainer}>
+                            <ActivityIndicator size="large" color={colors.text.primary} />
+                            <Text style={[styles.analyzingText, { color: colors.text.primary }]}>
+                                {t('session.status.analyzing')}
+                            </Text>
+                            <Text style={[styles.analyzingHint, { color: colors.text.secondary }]}>
+                                {t('session.instructions.analyzing')}
+                            </Text>
+                        </View>
                     </View>
                 </View>
-            </View>
+            </ScreenWrapper>
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RENDER: ERROR STATE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    if (logic.recordingState === 'error') {
+        return (
+            <ScreenWrapper useSafeArea={false}>
+                <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+                <View style={[styles.container, { paddingTop: insets.top }]}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                            <MaterialIcons name="close" size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+                            {t('session.error.title')}
+                        </Text>
+                        <View style={styles.headerSpacer} />
+                    </View>
+
+                    {/* Error Content */}
+                    <View style={styles.content}>
+                        <View style={styles.analyzingContainer}>
+                            <MaterialCommunityIcons
+                                name="alert-circle-outline"
+                                size={64}
+                                color={colors.text.muted}
+                            />
+                            <Text style={[styles.errorText, { color: colors.text.secondary }]}>
+                                {t('session.error.generic')}
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.closeButtonLarge, { backgroundColor: colors.surface.glass }]}
+                                onPress={handleClose}
+                            >
+                                <Text style={[styles.closeButtonText, { color: colors.text.primary }]}>
+                                    {t('common.close')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </ScreenWrapper>
         );
     }
 
@@ -94,45 +133,64 @@ export const SessionScreen = memo(function SessionScreen() {
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <ScreenWrapper useSafeArea={false}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+            <View style={[styles.container, { paddingTop: insets.top }]}>
                 {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-                    <Pressable
-                        style={[styles.closeButton, { backgroundColor: colors.surface.glass, borderColor: colors.glass.borderLight }]}
-                        onPress={handleClose}
-                    >
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                         <MaterialIcons name="close" size={24} color={colors.text.primary} />
-                    </Pressable>
+                    </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
-                        Session
+                        {t('session.title')}
                     </Text>
-                    <View style={styles.placeholder} />
+                    <View style={styles.headerSpacer} />
                 </View>
 
-                {/* Content */}
-                <View style={styles.content}>
-                    {/* Topic Badge */}
-                    <GlassView style={styles.topicBadge}>
-                        <Text style={[styles.topicTitle, { color: colors.text.primary }]}>
-                            {logic.topic.title}
-                        </Text>
-                    </GlassView>
+                {/* Topic Info */}
+                {logic.topic && (
+                    <View style={styles.topicInfo}>
+                        <GlassView style={styles.topicCard} showBorder>
+                            <MaterialCommunityIcons
+                                name="book-open-variant"
+                                size={20}
+                                color={colors.text.primary}
+                            />
+                            <Text
+                                style={[styles.topicTitle, { color: colors.text.primary }]}
+                                numberOfLines={1}
+                            >
+                                {logic.topic.title}
+                            </Text>
+                        </GlassView>
+                    </View>
+                )}
 
-                    {/* Status */}
+                {/* Main Content */}
+                <View style={styles.content}>
+                    {/* Status Indicator */}
                     <View style={styles.statusContainer}>
                         <View style={styles.statusRow}>
-                            {logic.isRecording && (
-                                <View style={[styles.recordingDot, { backgroundColor: colors.text.primary }]} />
-                            )}
+                            <View
+                                style={[
+                                    styles.statusDot,
+                                    {
+                                        backgroundColor: logic.isRecording
+                                            ? '#EF4444'
+                                            : colors.text.muted,
+                                    },
+                                ]}
+                            />
                             <Text style={[styles.statusText, { color: colors.text.primary }]}>
-                                {logic.isRecording ? 'Enregistrement...' : 'Prêt à enregistrer'}
+                                {logic.isRecording
+                                    ? t('session.status.recording')
+                                    : t('session.status.idle')}
                             </Text>
                         </View>
                         <Text style={[styles.statusHint, { color: colors.text.secondary }]}>
                             {logic.isRecording
-                                ? 'Expliquez le sujet avec vos mots'
-                                : 'Appuyez sur le bouton pour commencer'}
+                                ? t('session.instructions.recording')
+                                : t('session.instructions.idle')}
                         </Text>
                     </View>
 
@@ -161,19 +219,24 @@ export const SessionScreen = memo(function SessionScreen() {
                         <View style={styles.levelIndicatorContainer}>
                             <View style={styles.levelLabelRow}>
                                 <Text style={[styles.levelLabel, { color: colors.text.secondary }]}>
-                                    NIVEAU AUDIO
+                                    {t('session.audioLevel')}
                                 </Text>
                                 <Text style={[styles.levelPercentage, { color: colors.text.primary }]}>
                                     {Math.round(logic.audioLevel * 100)}%
                                 </Text>
                             </View>
-                            <View style={[styles.levelBarBackground, { backgroundColor: colors.surface.glass }]}>
+                            <View
+                                style={[
+                                    styles.levelBarBackground,
+                                    { backgroundColor: colors.surface.glass },
+                                ]}
+                            >
                                 <View
                                     style={[
                                         styles.levelBarFill,
                                         {
-                                            width: `${Math.min(logic.audioLevel * 100, 100)}%`,
                                             backgroundColor: colors.text.primary,
+                                            width: `${logic.audioLevel * 100}%`,
                                         },
                                     ]}
                                 />
@@ -181,29 +244,32 @@ export const SessionScreen = memo(function SessionScreen() {
                         </View>
                     )}
 
-                    {/* Instructions */}
+                    {/* Instructions (when idle) */}
                     {!logic.isRecording && (
                         <View style={styles.instructionsContainer}>
                             <View style={styles.instructionRow}>
-                                <MaterialIcons 
-                                    name="info-outline" 
-                                    size={16} 
-                                    color={colors.text.muted} 
-                                    style={styles.instructionIcon} 
+                                <MaterialCommunityIcons
+                                    name="microphone"
+                                    size={16}
+                                    color={colors.text.muted}
+                                    style={styles.instructionIcon}
                                 />
                                 <Text style={[styles.instructionText, { color: colors.text.muted }]}>
-                                    Parlez clairement et expliquez le sujet comme si vous l'enseigniez à quelqu'un
+                                    {t('session.hint')}
                                 </Text>
                             </View>
                         </View>
                     )}
                 </View>
             </View>
+        </ScreenWrapper>
     );
-});
+}
+
+export const SessionScreen = memo(SessionScreenComponent);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// STYLES (Static - colors applied inline)
+// STYLES
 // ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
@@ -212,59 +278,62 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: Spacing.lg,
-        paddingBottom: Spacing.md,
+        paddingVertical: Spacing.md,
     },
     closeButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
+        padding: Spacing.xs,
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '600',
     },
-    placeholder: {
+    headerSpacer: {
         width: 40,
+    },
+    topicInfo: {
+        paddingHorizontal: Spacing.lg,
+        marginBottom: Spacing.lg,
+    },
+    topicCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        borderRadius: BorderRadius.md,
+        gap: Spacing.sm,
+    },
+    topicTitle: {
+        fontSize: 14,
+        fontWeight: '500',
+        flex: 1,
     },
     content: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: Spacing.xl,
-    },
-    topicBadge: {
         paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.sm,
-        marginBottom: Spacing.xl,
-    },
-    topicTitle: {
-        fontSize: 16,
-        fontWeight: '600',
     },
     statusContainer: {
         alignItems: 'center',
-        marginBottom: Spacing.xxl,
+        marginBottom: Spacing.xl,
     },
     statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
+        gap: Spacing.sm,
+        marginBottom: Spacing.xs,
     },
-    recordingDot: {
+    statusDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        marginRight: Spacing.sm,
     },
     statusText: {
-        fontSize: 24,
-        fontWeight: '700',
+        fontSize: 18,
+        fontWeight: '600',
     },
     statusHint: {
         fontSize: 14,
@@ -273,13 +342,13 @@ const styles = StyleSheet.create({
     timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.lg,
+        gap: Spacing.sm,
+        marginBottom: Spacing.xl,
     },
     timerDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        marginRight: Spacing.sm,
     },
     timerText: {
         fontSize: 32,

@@ -1,28 +1,26 @@
 /**
  * @file DeleteAccountModal.tsx
- * @description Modal de suppression de compte avec vérification en deux étapes
- *
- * FIXED:
- * - All colors now use useTheme() hook
- * - Buttons are visible in both light and dark modes
- * - Improved contrast for buttons
+ * @description Delete Account Modal - Theme Aware, Internationalized
  */
 
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState } from 'react';
 import {
-    Modal,
     View,
     Text,
-    Pressable,
-    TextInput,
-    StyleSheet,
-    Platform,
+    Modal,
     TouchableOpacity,
+    TextInput,
     ActivityIndicator,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
+
 import { GlassView } from '@/shared/components';
-import { useTheme, Spacing, BorderRadius, FontSize, FontWeight } from '@/theme';
+import { useTheme, Spacing, BorderRadius } from '@/theme';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -45,253 +43,142 @@ export const DeleteAccountModal = memo(function DeleteAccountModal({
                                                                        onConfirm,
                                                                        isLoading,
                                                                    }: DeleteAccountModalProps) {
-    const { colors, isDark } = useTheme();
-    const [step, setStep] = useState<1 | 2>(1);
-    const [confirmText, setConfirmText] = useState('');
+    const { colors } = useTheme();
+    const { t } = useTranslation();
+    const [step, setStep] = useState(1);
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const isTextConfirmEnabled = confirmText.toUpperCase() === 'SUPPRIMER';
-    const isPasswordValid = password.length >= 6;
-
-    const handleClose = useCallback(() => {
+    const handleClose = () => {
         setStep(1);
-        setConfirmText('');
         setPassword('');
-        setError(null);
         onClose();
-    }, [onClose]);
+    };
 
-    const handleNextStep = useCallback(() => {
-        if (isTextConfirmEnabled) {
-            setStep(2);
-        }
-    }, [isTextConfirmEnabled]);
+    const handleContinue = () => {
+        setStep(2);
+    };
 
-    const handleBack = useCallback(() => {
-        setStep(1);
-        setPassword('');
-        setError(null);
-    }, []);
-
-    const handleConfirm = useCallback(async () => {
-        if (!isPasswordValid) return;
-
-        try {
-            setError(null);
-            await onConfirm(password);
-            handleClose();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-        }
-    }, [password, isPasswordValid, onConfirm, handleClose]);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER STEP 1: Text Confirmation
-    // ─────────────────────────────────────────────────────────────────────────
+    const handleConfirm = async () => {
+        await onConfirm(password);
+    };
 
     const renderStep1 = () => (
         <>
             {/* Warning Icon */}
-            <View style={[styles.iconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <MaterialIcons name="warning" size={48} color="#EF4444" />
-            </View>
-
-            {/* Title */}
-            <Text style={[styles.title, { color: colors.text.primary }]}>
-                Supprimer votre compte ?
-            </Text>
-
-            {/* Description */}
-            <Text style={[styles.description, { color: colors.text.secondary }]}>
-                Cette action est irréversible.{'\n'}
-                Toutes vos données seront définitivement supprimées.
-            </Text>
-
-            {/* Confirmation Input */}
-            <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text.secondary }]}>
-                    Tapez <Text style={styles.confirmationWord}>SUPPRIMER</Text> pour confirmer
-                </Text>
-                <View
-                    style={[
-                        styles.inputContainer,
-                        {
-                            backgroundColor: colors.surface.input,
-                            borderWidth: 1,
-                            borderColor: colors.glass.border,
-                        },
-                    ]}
-                >
-                    <TextInput
-                        style={[styles.input, { color: colors.text.primary }]}
-                        placeholder="SUPPRIMER"
-                        placeholderTextColor={colors.text.muted}
-                        value={confirmText}
-                        onChangeText={setConfirmText}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                    />
+            <View style={styles.iconContainer}>
+                <View style={[styles.warningIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                    <MaterialIcons name="warning" size={48} color="#EF4444" />
                 </View>
             </View>
 
+            {/* Title & Message */}
+            <Text style={[styles.title, { color: colors.text.primary }]}>
+                {t('deleteAccount.step1Title')}
+            </Text>
+            <Text style={[styles.message, { color: colors.text.secondary }]}>
+                {t('deleteAccount.step1Message')}
+            </Text>
+
+            {/* Consequences */}
+            <GlassView style={styles.consequencesCard} showBorder>
+                <Text style={[styles.consequencesTitle, { color: '#EF4444' }]}>
+                    {t('deleteAccount.consequences')}
+                </Text>
+                <View style={styles.consequenceItem}>
+                    <MaterialIcons name="remove-circle" size={16} color="#EF4444" />
+                    <Text style={[styles.consequenceText, { color: colors.text.secondary }]}>
+                        {t('deleteAccount.consequencesList.topics')}
+                    </Text>
+                </View>
+                <View style={styles.consequenceItem}>
+                    <MaterialIcons name="remove-circle" size={16} color="#EF4444" />
+                    <Text style={[styles.consequenceText, { color: colors.text.secondary }]}>
+                        {t('deleteAccount.consequencesList.sessions')}
+                    </Text>
+                </View>
+                <View style={styles.consequenceItem}>
+                    <MaterialIcons name="remove-circle" size={16} color="#EF4444" />
+                    <Text style={[styles.consequenceText, { color: colors.text.secondary }]}>
+                        {t('deleteAccount.consequencesList.data')}
+                    </Text>
+                </View>
+            </GlassView>
+
             {/* Buttons */}
-            <View style={styles.buttonsContainer}>
-                {/* Cancel Button - Secondary/Glass style */}
+            <View style={styles.buttons}>
                 <TouchableOpacity
-                    style={[
-                        styles.button,
-                        {
-                            backgroundColor: colors.surface.glass,
-                            borderWidth: 1,
-                            borderColor: colors.glass.border,
-                        },
-                    ]}
+                    style={[styles.cancelButton, { borderColor: colors.glass.border }]}
                     onPress={handleClose}
-                    disabled={isLoading}
-                    activeOpacity={0.7}
                 >
-                    <Text style={[styles.buttonText, { color: colors.text.primary }]}>
-                        Annuler
+                    <Text style={[styles.cancelButtonText, { color: colors.text.primary }]}>
+                        {t('deleteAccount.cancel')}
                     </Text>
                 </TouchableOpacity>
-
-                {/* Continue Button - Primary style (visible in both themes) */}
                 <TouchableOpacity
-                    style={[
-                        styles.button,
-                        {
-                            backgroundColor: isTextConfirmEnabled
-                                ? colors.text.primary
-                                : colors.surface.disabled,
-                        },
-                        !isTextConfirmEnabled && styles.buttonDisabled,
-                    ]}
-                    onPress={handleNextStep}
-                    disabled={!isTextConfirmEnabled || isLoading}
-                    activeOpacity={0.7}
+                    style={[styles.dangerButton, { backgroundColor: '#EF4444' }]}
+                    onPress={handleContinue}
                 >
-                    <Text
-                        style={[
-                            styles.buttonText,
-                            {
-                                color: isTextConfirmEnabled
-                                    ? colors.text.inverse
-                                    : colors.text.muted,
-                            },
-                        ]}
-                    >
-                        Continuer
+                    <Text style={styles.dangerButtonText}>
+                        {t('deleteAccount.continue')}
                     </Text>
                 </TouchableOpacity>
             </View>
         </>
     );
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER STEP 2: Password Confirmation
-    // ─────────────────────────────────────────────────────────────────────────
-
     const renderStep2 = () => (
         <>
-            {/* Lock Icon */}
-            <View style={[styles.iconContainer, { backgroundColor: colors.surface.glass }]}>
-                <MaterialIcons name="lock" size={48} color={colors.text.primary} />
-            </View>
-
             {/* Title */}
             <Text style={[styles.title, { color: colors.text.primary }]}>
-                Confirmer avec votre mot de passe
+                {t('deleteAccount.step2Title')}
             </Text>
-
-            {/* Description */}
-            <Text style={[styles.description, { color: colors.text.secondary }]}>
-                Pour des raisons de sécurité, veuillez entrer votre mot de passe pour confirmer la suppression.
+            <Text style={[styles.message, { color: colors.text.secondary }]}>
+                {t('deleteAccount.step2Message')}
             </Text>
 
             {/* Password Input */}
-            <View style={styles.inputSection}>
-                <View
-                    style={[
-                        styles.inputContainer,
-                        {
-                            backgroundColor: colors.surface.input,
-                            borderWidth: 1,
-                            borderColor: error ? '#EF4444' : colors.glass.border,
-                        },
-                    ]}
-                >
+            <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>
+                    {t('deleteAccount.confirmation')}
+                </Text>
+                <GlassView style={styles.inputContainer} showBorder>
                     <TextInput
-                        style={[styles.input, styles.passwordInput, { color: colors.text.primary }]}
-                        placeholder="Mot de passe"
+                        style={[styles.input, { color: colors.text.primary }]}
+                        placeholder={t('deleteAccount.passwordPlaceholder')}
                         placeholderTextColor={colors.text.muted}
                         value={password}
                         onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
-                        autoCapitalize="none"
-                        autoCorrect={false}
+                        secureTextEntry
+                        autoComplete="password"
                     />
-                    <Pressable
-                        style={styles.eyeButton}
-                        onPress={() => setShowPassword(!showPassword)}
-                    >
-                        <MaterialIcons
-                            name={showPassword ? 'visibility-off' : 'visibility'}
-                            size={24}
-                            color={colors.text.muted}
-                        />
-                    </Pressable>
-                </View>
-                {error && <Text style={styles.errorText}>{error}</Text>}
+                </GlassView>
             </View>
 
             {/* Buttons */}
-            <View style={styles.buttonsContainer}>
-                {/* Back Button - Secondary/Glass style */}
+            <View style={styles.buttons}>
                 <TouchableOpacity
-                    style={[
-                        styles.button,
-                        {
-                            backgroundColor: colors.surface.glass,
-                            borderWidth: 1,
-                            borderColor: colors.glass.border,
-                        },
-                    ]}
-                    onPress={handleBack}
+                    style={[styles.cancelButton, { borderColor: colors.glass.border }]}
+                    onPress={handleClose}
                     disabled={isLoading}
-                    activeOpacity={0.7}
                 >
-                    <Text style={[styles.buttonText, { color: colors.text.primary }]}>
-                        Retour
+                    <Text style={[styles.cancelButtonText, { color: colors.text.primary }]}>
+                        {t('deleteAccount.cancel')}
                     </Text>
                 </TouchableOpacity>
-
-                {/* Delete Button - Danger style (always red for visibility) */}
                 <TouchableOpacity
                     style={[
-                        styles.button,
-                        {
-                            backgroundColor: isPasswordValid ? '#EF4444' : colors.surface.disabled,
-                        },
-                        !isPasswordValid && styles.buttonDisabled,
+                        styles.dangerButton,
+                        { backgroundColor: '#EF4444' },
+                        (!password || isLoading) && styles.buttonDisabled,
                     ]}
                     onPress={handleConfirm}
-                    disabled={!isPasswordValid || isLoading}
-                    activeOpacity={0.7}
+                    disabled={!password || isLoading}
                 >
                     {isLoading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                        <Text
-                            style={[
-                                styles.buttonText,
-                                {
-                                    color: isPasswordValid ? '#FFFFFF' : colors.text.muted,
-                                },
-                            ]}
-                        >
-                            Supprimer
+                        <Text style={styles.dangerButtonText}>
+                            {t('deleteAccount.confirm')}
                         </Text>
                     )}
                 </TouchableOpacity>
@@ -303,26 +190,27 @@ export const DeleteAccountModal = memo(function DeleteAccountModal({
         <Modal
             visible={visible}
             transparent
-            animationType="fade"
+            animationType="slide"
             onRequestClose={handleClose}
         >
-            <Pressable style={styles.overlay} onPress={handleClose}>
-                <Pressable style={styles.content} onPress={(e) => e.stopPropagation()}>
-                    <GlassView
-                        variant="elevated"
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: isDark
-                                    ? 'rgba(30, 30, 30, 0.98)'
-                                    : 'rgba(255, 255, 255, 0.98)',
-                            },
-                        ]}
+            <KeyboardAvoidingView
+                style={styles.overlay}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <Pressable style={styles.overlay} onPress={handleClose}>
+                    <Pressable
+                        style={[styles.content, { backgroundColor: colors.background.primary }]}
+                        onPress={(e) => e.stopPropagation()}
                     >
+                        {/* Close Button */}
+                        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                            <MaterialIcons name="close" size={24} color={colors.text.secondary} />
+                        </TouchableOpacity>
+
                         {step === 1 ? renderStep1() : renderStep2()}
-                    </GlassView>
+                    </Pressable>
                 </Pressable>
-            </Pressable>
+            </KeyboardAvoidingView>
         </Modal>
     );
 });
@@ -334,122 +222,108 @@ export const DeleteAccountModal = memo(function DeleteAccountModal({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: Spacing.lg,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'flex-end',
     },
-
     content: {
-        width: '100%',
-        maxWidth: 340,
+        borderTopLeftRadius: BorderRadius.xl,
+        borderTopRightRadius: BorderRadius.xl,
+        padding: Spacing.lg,
+        paddingBottom: Spacing.xxl,
     },
-
-    card: {
-        padding: Spacing.xl,
-        borderRadius: BorderRadius.xl,
-        alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.2,
-                shadowRadius: 24,
-            },
-            android: {
-                elevation: 16,
-            },
-        }),
+    closeButton: {
+        position: 'absolute',
+        top: Spacing.md,
+        right: Spacing.md,
+        zIndex: 1,
     },
-
     iconContainer: {
+        alignItems: 'center',
+        marginBottom: Spacing.lg,
+        marginTop: Spacing.md,
+    },
+    warningIcon: {
         width: 80,
         height: 80,
         borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: Spacing.lg,
     },
-
     title: {
-        fontSize: FontSize.xl,
-        fontWeight: FontWeight.bold,
+        fontSize: 22,
+        fontWeight: '700',
         textAlign: 'center',
         marginBottom: Spacing.sm,
     },
-
-    description: {
-        fontSize: FontSize.md,
+    message: {
+        fontSize: 14,
         textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: Spacing.xl,
+        marginBottom: Spacing.lg,
+        lineHeight: 20,
     },
-
-    inputSection: {
-        width: '100%',
+    consequencesCard: {
+        padding: Spacing.md,
+        borderRadius: BorderRadius.md,
         marginBottom: Spacing.lg,
     },
-
-    inputLabel: {
-        fontSize: FontSize.sm,
+    consequencesTitle: {
+        fontSize: 14,
+        fontWeight: '600',
         marginBottom: Spacing.sm,
-        textAlign: 'center',
     },
-
-    confirmationWord: {
-        fontWeight: FontWeight.bold,
-        color: '#EF4444',
-    },
-
-    inputContainer: {
+    consequenceItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.md,
+        gap: Spacing.xs,
+        marginBottom: Spacing.xs,
+    },
+    consequenceText: {
+        fontSize: 14,
+        flex: 1,
+    },
+    inputGroup: {
+        marginBottom: Spacing.lg,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: Spacing.xs,
+    },
+    inputContainer: {
         borderRadius: BorderRadius.md,
     },
-
     input: {
-        flex: 1,
-        fontSize: FontSize.md,
-        paddingVertical: Spacing.md,
-        textAlign: 'center',
+        fontSize: 16,
+        padding: Spacing.md,
     },
-
-    passwordInput: {
-        textAlign: 'left',
-    },
-
-    eyeButton: {
-        padding: Spacing.xs,
-    },
-
-    errorText: {
-        fontSize: FontSize.sm,
-        color: '#EF4444',
-        textAlign: 'center',
-        marginTop: Spacing.sm,
-    },
-
-    buttonsContainer: {
+    buttons: {
         flexDirection: 'row',
-        gap: Spacing.md,
-        width: '100%',
+        gap: Spacing.sm,
     },
-
-    button: {
+    cancelButton: {
         flex: 1,
         paddingVertical: Spacing.md,
         borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 48,
+        borderWidth: 1,
     },
-
-    buttonText: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
-
+    dangerButton: {
+        flex: 1,
+        paddingVertical: Spacing.md,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    dangerButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
     buttonDisabled: {
         opacity: 0.5,
     },
