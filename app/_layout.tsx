@@ -1,95 +1,48 @@
 /**
  * @file _layout.tsx
- * @description Root Layout - Connection-first initialization with Theme Support
+ * @description Root Layout - Theme + Auth + i18n Provider
  *
- * Flow:
- * 1. Show connecting screen
- * 2. Health check API with retry
- * 3. Once connected, check auth state
- * 4. Navigate to login or main app
- *
- * UPDATED: Added ThemeProvider for Light/Dark/System theme support
+ * UPDATED: Added i18n initialization
+ * - Import '@/i18n' at the top to initialize i18next
+ * - Language is automatically loaded from AsyncStorage
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useAuthStore } from '@/store';
-import { api } from '@/shared/api';
+import {
+    View,
+    Text,
+    ActivityIndicator,
+    StyleSheet,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORTANT: Initialize i18n before anything else
+// ═══════════════════════════════════════════════════════════════════════════
+import '@/i18n';
+
 import { ThemeProvider, useTheme } from '@/theme';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useServerHealth } from '@/shared/hooks/useServerHealth';
 
-// Prevent splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
+// ═══════════════════════════════════════════════════════════════════════════
+// CONNECTION GATE
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Connection states
-type ConnectionState = 'connecting' | 'connected' | 'failed';
+interface ConnectionGateProps {
+    children: React.ReactNode;
+}
 
-/**
- * Connection Gate Component
- * Blocks app until API connection is established
- * Now theme-aware!
- */
-function ConnectionGate({ children }: { children: React.ReactNode }) {
-    const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
-    const [attempt, setAttempt] = useState(1);
-    const [error, setError] = useState<string | null>(null);
-
-    const { initialize, isInitialized } = useAuthStore();
-
-    // Get theme colors
+function ConnectionGate({ children }: ConnectionGateProps) {
     const { colors, isDark } = useTheme();
+    const { isConnected, isChecking, error, attempt } = useServerHealth();
 
-    /**
-     * Attempt connection to API
-     */
-    const connectToApi = useCallback(async () => {
-        setConnectionState('connecting');
-        setError(null);
-
-        console.log(`[ConnectionGate] Connection attempt ${attempt}...`);
-
-        try {
-            // Health check
-            const isConnected = await api.checkConnection(1);
-
-            if (isConnected) {
-                console.log('[ConnectionGate] API connected');
-                setConnectionState('connected');
-
-                // Initialize auth after connection established
-                await initialize();
-
-                // Hide splash screen
-                SplashScreen.hideAsync();
-            } else {
-                throw new Error('Health check failed');
-            }
-        } catch (err) {
-            console.log(`[ConnectionGate] Connection attempt ${attempt} failed`);
-            setError('Unable to connect to server');
-
-            // Auto retry after delay
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-            console.log(`[ConnectionGate] Retrying in ${delay}ms...`);
-
-            setTimeout(() => {
-                setAttempt(prev => prev + 1);
-            }, delay);
-        }
-    }, [attempt, initialize]);
-
-    // Connect on mount and on retry
-    useEffect(() => {
-        connectToApi();
-    }, [attempt]);
-
-    // Show connecting screen until connected and auth initialized
-    if (connectionState !== 'connected' || !isInitialized) {
+    if (!isConnected || isChecking) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+            <View style={[styles.connectionContainer, { backgroundColor: colors.background.primary }]}>
                 <StatusBar style={isDark ? 'light' : 'dark'} />
 
                 {/* Logo */}
@@ -126,9 +79,10 @@ function ConnectionGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
-/**
- * Auth Navigation Handler
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTH NAVIGATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
 function AuthNavigator({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const segments = useSegments();
@@ -150,10 +104,10 @@ function AuthNavigator({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
-/**
- * Themed App Content
- * This component has access to useTheme() because it's inside ThemeProvider
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// THEMED APP CONTENT
+// ═══════════════════════════════════════════════════════════════════════════
+
 function ThemedAppContent() {
     const { colors, isDark } = useTheme();
 
@@ -161,88 +115,126 @@ function ThemedAppContent() {
         <ConnectionGate>
             <AuthNavigator>
                 <StatusBar style={isDark ? 'light' : 'dark'} />
-                <Stack
-                    screenOptions={{
-                        headerShown: false,
-                        contentStyle: {
-                            backgroundColor: colors.background.primary,
-                        },
-                        animation: 'fade',
-                    }}
+                <LinearGradient
+                    colors={[
+                        colors.gradient.start,
+                        colors.gradient.middle,
+                        colors.gradient.end,
+                    ]}
+                    style={styles.gradient}
                 >
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="index" />
-                    <Stack.Screen
-                        name="[topicId]/index"
-                        options={{ animation: 'slide_from_right' }}
-                    />
-                    <Stack.Screen
-                        name="[topicId]/session"
-                        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                        name="[topicId]/result"
-                        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-                    />
-                </Stack>
+                    <Stack
+                        screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: 'transparent' },
+                            animation: 'slide_from_right',
+                        }}
+                    >
+                        {/* Auth Group */}
+                        <Stack.Screen
+                            name="(auth)"
+                            options={{
+                                headerShown: false,
+                            }}
+                        />
+
+                        {/* Main Screens */}
+                        <Stack.Screen name="index" />
+
+                        {/* Profile Modal */}
+                        <Stack.Screen
+                            name="profile"
+                            options={{
+                                presentation: 'transparentModal',
+                                animation: 'fade',
+                            }}
+                        />
+
+                        {/* Topic Detail */}
+                        <Stack.Screen name="[topicId]/index" />
+
+                        {/* Session Recording Modal */}
+                        <Stack.Screen
+                            name="[topicId]/session"
+                            options={{
+                                presentation: 'fullScreenModal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+
+                        {/* Result Modal */}
+                        <Stack.Screen
+                            name="[topicId]/result"
+                            options={{
+                                presentation: 'fullScreenModal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+                    </Stack>
+                </LinearGradient>
             </AuthNavigator>
         </ConnectionGate>
     );
 }
 
-/**
- * Root Layout Component
- * Wraps entire app with ThemeProvider
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT LAYOUT
+// ═══════════════════════════════════════════════════════════════════════════
+
 export default function RootLayout() {
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <ThemeProvider>
-                <ThemedAppContent />
-            </ThemeProvider>
-        </GestureHandlerRootView>
+        <ThemeProvider>
+            <ThemedAppContent />
+        </ThemeProvider>
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
+
 const styles = StyleSheet.create({
-    container: {
+    gradient: {
+        flex: 1,
+    },
+    connectionContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 32,
+        padding: 24,
     },
     logoContainer: {
         marginBottom: 24,
     },
     logoOuter: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         justifyContent: 'center',
         alignItems: 'center',
     },
     logoMiddle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 96,
+        height: 96,
+        borderRadius: 48,
         justifyContent: 'center',
         alignItems: 'center',
     },
     logoInner: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         justifyContent: 'center',
         alignItems: 'center',
     },
     logoText: {
-        fontSize: 28,
+        fontSize: 36,
         fontWeight: '700',
     },
     appName: {
         fontSize: 32,
         fontWeight: '700',
-        marginBottom: 48,
+        marginBottom: 24,
     },
     statusContainer: {
         flexDirection: 'row',
