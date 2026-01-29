@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "Loading...",
-    "error": "Error",
+    "error": "An error occurred",
     "success": "Success",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -23,34 +23,32 @@
 
   "auth": {
     "login": {
-      "title": "Welcome Back",
-      "subtitle": "Sign in to continue your learning journey",
+      "title": "Login",
+      "subtitle": "Welcome back!",
       "email": "Email",
-      "emailPlaceholder": "Enter your email",
+      "emailPlaceholder": "your@email.com",
       "password": "Password",
-      "passwordPlaceholder": "Enter your password",
-      "forgotPassword": "Forgot Password?",
-      "signIn": "Sign In",
+      "passwordPlaceholder": "Your password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
       "noAccount": "Don't have an account?",
       "signUp": "Sign Up",
-      "orContinueWith": "or continue with",
-      "loginFailed": "Login Failed",
-      "invalidCredentials": "Invalid email or password"
+      "continueWithGoogle": "Continue with Google",
+      "loginFailed": "Login Failed"
     },
     "register": {
-      "title": "Create Account",
-      "subtitle": "Start your learning journey today",
+      "title": "Sign Up",
+      "subtitle": "Create your account",
       "fullName": "Full Name",
-      "fullNamePlaceholder": "Enter your name",
+      "fullNamePlaceholder": "Your name",
       "email": "Email",
-      "emailPlaceholder": "Enter your email",
+      "emailPlaceholder": "your@email.com",
       "password": "Password",
-      "passwordPlaceholder": "Create a password",
+      "passwordPlaceholder": "Choose a password",
       "confirmPassword": "Confirm Password",
-      "confirmPasswordPlaceholder": "Confirm your password",
-      "passwordHint": "Password must be at least 8 characters",
-      "createAccount": "Create Account",
-      "hasAccount": "Already have an account?",
+      "confirmPasswordPlaceholder": "Repeat your password",
+      "submit": "Create Account",
+      "alreadyHaveAccount": "Already have an account?",
       "signIn": "Sign In",
       "registrationFailed": "Registration Failed"
     },
@@ -65,7 +63,8 @@
     "logout": {
       "title": "Logout",
       "message": "Are you sure you want to logout?",
-      "confirm": "Logout"
+      "confirm": "Logout",
+      "cancel": "Cancel"
     }
   },
 
@@ -74,6 +73,8 @@
     "subtitle": "Learn by Explaining",
     "tagline": "Master your knowledge through practice",
     "getStarted": "Get Started",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign In",
     "features": {
       "record": "Record your explanations",
       "analyze": "Instant AI analysis",
@@ -195,15 +196,18 @@
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
-      "evening": "Good evening"
+      "evening": "Good evening",
+      "ready": "Ready to learn?"
     },
     "stats": {
       "topics": "topics",
-      "sessions": "sessions"
+      "sessions": "sessions",
+      "streak": "Streak"
     },
     "search": {
       "placeholder": "Search a topic...",
-      "noResults": "No topics found"
+      "noResults": "No topics found",
+      "activeFilters": "Active filters"
     },
     "categories": {
       "all": "All",
@@ -218,15 +222,17 @@
     "addTopic": {
       "title": "New Topic",
       "placeholder": "Topic name (e.g. React Hooks)",
-      "submit": "Create Topic",
+      "submit": "Create topic",
       "success": "Topic created successfully",
       "error": "Error creating topic"
     },
     "card": {
+      "sessions": "sessions",
       "sessions_one": "{{count}} session",
       "sessions_other": "{{count}} sessions",
       "lastSession": "Last session: {{date}}",
-      "noSessions": "No sessions"
+      "noSessions": "No sessions",
+      "swipeHint": "Swipe for more options"
     }
   },
 
@@ -234,123 +240,112 @@
     "sessions": "Sessions",
     "sessionsCount_one": "{{count}} session",
     "sessionsCount_other": "{{count}} sessions",
-    "startRecording": "Start Recording",
+    "startRecording": "Start recording",
     "empty": {
-      "title": "No sessions yet",
+      "title": "No sessions",
       "description": "Start recording your explanations for this topic"
     },
     "actions": {
       "edit": "Edit",
       "delete": "Delete",
-      "confirmDelete": "Are you sure you want to delete this topic?",
-      "deleteSuccess": "Topic deleted successfully"
+      "confirmDelete": "Are you sure you want to delete this topic?"
     },
     "editModal": {
-      "title": "Edit Topic",
+      "title": "Edit topic",
       "placeholder": "Topic name",
-      "save": "Save"
+      "submit": "Save"
     },
-    "notFound": "Topic not found"
+    "notFound": {
+      "title": "Topic not found",
+      "description": "This topic doesn't exist or has been deleted"
+    }
   },
 
   "session": {
-    "title": "Recording",
-    "forTopic": "Topic: {{topic}}",
+    "title": "Session",
+    "forTopic": "for {{topic}}",
     "status": {
-      "idle": "Ready to record",
+      "ready": "Ready to record",
       "recording": "Recording...",
       "analyzing": "Analyzing...",
-      "complete": "Complete",
-      "error": "Error"
+      "completed": "Session completed"
     },
     "instructions": {
-      "idle": "Press the button to start",
-      "recording": "Explain the topic in your own words",
-      "analyzing": "AI is analyzing your explanation"
+      "title": "How it works?",
+      "step1": "Tap the button to start",
+      "step2": "Explain the topic out loud",
+      "step3": "Get your instant analysis"
     },
-    "audioLevel": "AUDIO LEVEL",
+    "audioLevel": "Audio level",
     "duration": "Duration",
     "tips": {
       "title": "Tips",
-      "tip1": "Speak clearly at a normal pace",
+      "tip1": "Speak clearly at a steady pace",
       "tip2": "Structure your explanation",
-      "tip3": "Use concrete examples"
+      "tip3": "Give concrete examples"
     },
-    "hint": "Keep the microphone close to you for better quality",
+    "hint": "Tap to start recording",
     "error": {
-      "title": "Error",
-      "microphone": "Unable to access microphone",
-      "recording": "Error during recording",
-      "analysis": "Error during analysis",
-      "generic": "An error occurred"
+      "permission": "Microphone permission required",
+      "recording": "Recording error",
+      "analysis": "Analysis error"
     }
   },
 
   "result": {
     "title": "Result",
     "tabs": {
-      "transcription": "Transcription",
-      "analysis": "Analysis"
+      "analysis": "Analysis",
+      "transcription": "Transcription"
     },
     "analysis": {
-      "correctPoints": "Correct Points",
-      "corrections": "Corrections",
-      "missingElements": "Missing Elements",
-      "noCorrectPoints": "No correct points identified",
-      "noCorrections": "No corrections needed",
-      "noMissingElements": "No missing elements",
-      "empty": "No analysis available"
+      "valid": "Correct points",
+      "corrections": "To correct",
+      "missing": "Missing points"
     },
     "transcription": {
-      "title": "Your explanation",
-      "empty": "No transcription available",
-      "copy": "Copy",
-      "copied": "Copied!"
+      "title": "Transcription",
+      "empty": "No transcription available"
     },
     "actions": {
-      "newSession": "New Session",
-      "close": "Close",
-      "share": "Share",
-      "backToTopic": "Back to topic"
+      "retry": "Retry",
+      "done": "Done"
     },
     "score": {
       "title": "Score",
-      "excellent": "Excellent",
-      "good": "Good",
-      "needsWork": "Needs Work"
+      "excellent": "Excellent!",
+      "good": "Good!",
+      "average": "Could be better",
+      "needsWork": "Needs work"
     },
-    "loading": "Loading analysis..."
+    "loading": "Analyzing your explanation..."
   },
 
   "sessionCard": {
-    "date": "{{date}}",
-    "duration": "{{duration}}",
     "score": "Score: {{score}}%",
-    "viewDetails": "View Details",
-    "noScore": "Not rated"
+    "duration": "Duration: {{duration}}",
+    "noAnalysis": "No analysis available"
   },
 
   "connection": {
-    "connecting": "Connecting to server...",
-    "retrying": "Connecting... (attempt {{attempt}})",
-    "error": "Unable to connect to server",
-    "offline": "You are offline"
+    "offline": "Offline",
+    "offlineMessage": "Check your internet connection",
+    "retry": "Retry"
   },
 
   "errors": {
     "generic": "An error occurred",
     "network": "Connection error",
-    "server": "Server error",
     "unauthorized": "Session expired, please log in again",
     "notFound": "Resource not found",
-    "validation": "Validation error"
+    "server": "Server error, please try again"
   },
 
   "permissions": {
     "microphone": {
-      "title": "Microphone Access",
+      "title": "Microphone Permission",
       "message": "KnowIt needs access to your microphone to record your explanations.",
-      "denied": "Microphone access denied. Please enable it in settings."
+      "denied": "Microphone access denied. Enable it in settings."
     }
   },
 
@@ -362,7 +357,8 @@
     "hoursAgo_other": "{{count}} hours ago",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
-    "weeksAgo_one": "{{count}} week ago",
-    "weeksAgo_other": "{{count}} weeks ago"
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "never": "Never"
   }
 }

@@ -2,6 +2,8 @@
  * @file i18n.ts
  * @description Internationalization configuration using i18next + react-i18next
  *
+ * FIXED VERSION - Proper initialization and type safety
+ *
  * Setup:
  * 1. npm install i18next react-i18next @react-native-async-storage/async-storage
  * 2. Import this file in your root _layout.tsx: import '@/i18n';
@@ -31,16 +33,20 @@ export const SUPPORTED_LANGUAGES = ['fr', 'en'] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LANGUAGE DETECTOR
+// LANGUAGE DETECTOR PLUGIN
+// Custom plugin to detect and persist language preference
 // ═══════════════════════════════════════════════════════════════════════════
 
 const languageDetectorPlugin = {
     type: 'languageDetector' as const,
     async: true,
-    init: () => {},
+    init: () => {
+        // No initialization needed
+    },
     detect: async (callback: (lng: string) => void) => {
         try {
             const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+
             if (savedLanguage && SUPPORTED_LANGUAGES.includes(savedLanguage as SupportedLanguage)) {
                 console.log('[i18n] Loaded saved language:', savedLanguage);
                 callback(savedLanguage);
@@ -49,6 +55,7 @@ const languageDetectorPlugin = {
         } catch (error) {
             console.warn('[i18n] Error reading language from storage:', error);
         }
+
         console.log('[i18n] Using default language:', DEFAULT_LANGUAGE);
         callback(DEFAULT_LANGUAGE);
     },
@@ -64,6 +71,7 @@ const languageDetectorPlugin = {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RESOURCES
+// Define all translation resources
 // ═══════════════════════════════════════════════════════════════════════════
 
 const resources = {
@@ -73,6 +81,7 @@ const resources = {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INITIALIZATION
+// Configure and initialize i18next
 // ═══════════════════════════════════════════════════════════════════════════
 
 i18n
@@ -81,21 +90,30 @@ i18n
     .init({
         resources,
         fallbackLng: DEFAULT_LANGUAGE,
-        compatibilityJSON: 'v4', // Required for React Native
+
+        // Required for React Native - fixes plural rules
+        compatibilityJSON: 'v4',
 
         interpolation: {
-            escapeValue: false, // React already escapes by default
+            // React already escapes values, so we don't need to escape again
+            escapeValue: false,
         },
 
         react: {
-            useSuspense: false, // Disable suspense for React Native compatibility
+            // Disable suspense for React Native compatibility
+            // Suspense doesn't work well with React Native
+            useSuspense: false,
         },
 
-        // Pluralization
+        // Pluralization separator (e.g., key_one, key_other)
         pluralSeparator: '_',
 
-        // Debug in development
+        // Enable debug logging in development
         debug: __DEV__,
+
+        // Return key if translation is missing (helps identify missing translations)
+        returnNull: false,
+        returnEmptyString: false,
     });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -111,8 +129,14 @@ export const changeLanguage = async (language: SupportedLanguage): Promise<void>
         console.warn(`[i18n] Unsupported language: ${language}`);
         return;
     }
-    await i18n.changeLanguage(language);
-    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+
+    try {
+        await i18n.changeLanguage(language);
+        await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+        console.log('[i18n] Language changed to:', language);
+    } catch (error) {
+        console.error('[i18n] Error changing language:', error);
+    }
 };
 
 /**
@@ -121,9 +145,11 @@ export const changeLanguage = async (language: SupportedLanguage): Promise<void>
  */
 export const getCurrentLanguage = (): SupportedLanguage => {
     const lang = i18n.language;
+
     if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
         return lang as SupportedLanguage;
     }
+
     return DEFAULT_LANGUAGE;
 };
 
@@ -137,6 +163,7 @@ export const isLanguageSupported = (lang: string): lang is SupportedLanguage => 
 
 /**
  * Get language display info
+ * @param code - Language code
  */
 export const getLanguageInfo = (code: SupportedLanguage) => {
     const info: Record<SupportedLanguage, { label: string; nativeLabel: string; flag: string }> = {
@@ -144,6 +171,16 @@ export const getLanguageInfo = (code: SupportedLanguage) => {
         en: { label: 'English', nativeLabel: 'English', flag: '🇬🇧' },
     };
     return info[code];
+};
+
+/**
+ * Get all supported languages with their info
+ */
+export const getAllLanguages = () => {
+    return SUPPORTED_LANGUAGES.map((code) => ({
+        code,
+        ...getLanguageInfo(code),
+    }));
 };
 
 export default i18n;

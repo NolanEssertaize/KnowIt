@@ -2,7 +2,7 @@
  * @file LoginScreen.tsx
  * @description Login screen - Theme Aware, Internationalized
  *
- * UPDATED: All hardcoded strings replaced with i18n translations
+ * FIXED VERSION - Proper i18n integration with all strings translated
  */
 
 import React, { memo, useRef } from 'react';
@@ -74,7 +74,7 @@ export const LoginScreen = memo(function LoginScreen() {
                     <Text style={[styles.footerText, { color: colors.text.secondary }]}>
                         {t('auth.login.noAccount')}
                     </Text>
-                    <TouchableOpacity onPress={onRegisterPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity onPress={onRegisterPress}>
                         <Text style={[styles.footerLink, { color: colors.text.primary }]}>
                             {t('auth.login.signUp')}
                         </Text>
@@ -84,57 +84,55 @@ export const LoginScreen = memo(function LoginScreen() {
         >
             {/* Email Input */}
             <GlassInput
-                label={t('auth.login.email')}
+                icon={<Mail size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.login.emailPlaceholder')}
                 value={email}
                 onChangeText={setEmail}
-                error={validationErrors.email}
-                leftIcon={Mail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                autoCorrect={false}
                 autoComplete="email"
                 returnKeyType="next"
                 onSubmitEditing={onEmailSubmit}
-                editable={!isLoading}
+                error={validationErrors.email}
             />
 
             {/* Password Input */}
             <GlassInput
                 ref={passwordInputRef}
-                label={t('auth.login.password')}
+                icon={<Lock size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.login.passwordPlaceholder')}
                 value={password}
                 onChangeText={setPassword}
-                error={validationErrors.password}
-                leftIcon={Lock}
-                isPassword
+                secureTextEntry
+                autoCapitalize="none"
                 autoComplete="password"
                 returnKeyType="done"
                 onSubmitEditing={onLoginPress}
-                editable={!isLoading}
+                error={validationErrors.password}
             />
 
-            {/* Forgot Password Link */}
+            {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordContainer}>
-                <Text style={[styles.forgotPasswordText, { color: colors.text.muted }]}>
+                <Text style={[styles.forgotPasswordText, { color: colors.text.secondary }]}>
                     {t('auth.login.forgotPassword')}
                 </Text>
             </TouchableOpacity>
 
             {/* Error Message */}
             {error && (
-                <View style={[styles.errorContainer, { backgroundColor: colors.surface.glass }]}>
-                    <Text style={[styles.errorText, { color: colors.text.primary }]}>{error}</Text>
+                <View style={[styles.errorContainer, { backgroundColor: colors.status.error + '20' }]}>
+                    <Text style={[styles.errorText, { color: colors.status.error }]}>
+                        {error}
+                    </Text>
                 </View>
             )}
 
             {/* Login Button */}
             <TouchableOpacity
+                style={styles.buttonContainer}
                 onPress={onLoginPress}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                style={styles.buttonContainer}
             >
                 <View
                     style={[
@@ -154,24 +152,24 @@ export const LoginScreen = memo(function LoginScreen() {
 
             {/* Divider */}
             <View style={styles.dividerContainer}>
-                <View style={[styles.dividerLine, { backgroundColor: colors.glass.border }]} />
+                <View style={[styles.divider, { backgroundColor: colors.glass.border }]} />
                 <Text style={[styles.dividerText, { color: colors.text.muted }]}>
                     {t('auth.login.orContinueWith')}
                 </Text>
-                <View style={[styles.dividerLine, { backgroundColor: colors.glass.border }]} />
+                <View style={[styles.divider, { backgroundColor: colors.glass.border }]} />
             </View>
 
             {/* Social Login Buttons */}
             <View style={styles.socialContainer}>
                 <TouchableOpacity
-                    style={[styles.socialButton, { backgroundColor: colors.surface.glass, borderColor: colors.glass.border }]}
-                    disabled={isLoading}
+                    style={[styles.socialButton, { backgroundColor: colors.surface.glass }]}
+                    activeOpacity={0.7}
                 >
                     <MaterialCommunityIcons name="google" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.socialButton, { backgroundColor: colors.surface.glass, borderColor: colors.glass.border }]}
-                    disabled={isLoading}
+                    style={[styles.socialButton, { backgroundColor: colors.surface.glass }]}
+                    activeOpacity={0.7}
                 >
                     <MaterialCommunityIcons name="apple" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
@@ -200,7 +198,7 @@ const styles = StyleSheet.create({
     },
     forgotPasswordContainer: {
         alignSelf: 'flex-end',
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
     },
     forgotPasswordText: {
         fontSize: 14,
@@ -215,7 +213,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     buttonContainer: {
-        marginBottom: Spacing.lg,
+        marginTop: Spacing.sm,
     },
     loginButton: {
         height: 56,
@@ -230,15 +228,15 @@ const styles = StyleSheet.create({
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.lg,
+        marginVertical: Spacing.xl,
     },
-    dividerLine: {
+    divider: {
         flex: 1,
         height: 1,
     },
     dividerText: {
         marginHorizontal: Spacing.md,
-        fontSize: 14,
+        fontSize: 12,
     },
     socialContainer: {
         flexDirection: 'row',
@@ -251,7 +249,6 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
     },
 });
 

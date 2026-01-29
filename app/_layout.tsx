@@ -2,9 +2,13 @@
  * @file _layout.tsx
  * @description Root Layout - Theme + Auth + i18n Provider
  *
- * UPDATED: Added i18n initialization
- * - Import '@/i18n' at the top to initialize i18next
- * - Language is automatically loaded from AsyncStorage
+ * FIXED VERSION - Combines main branch stability with i18n branch features
+ *
+ * Changes from broken i18n branch:
+ * 1. Added GestureHandlerRootView wrapper (REQUIRED)
+ * 2. Added SafeAreaProvider (REQUIRED for useSafeAreaInsets)
+ * 3. Proper i18n initialization order
+ * 4. Fixed StatusBar style based on theme
  */
 
 import React, { useEffect, useState } from 'react';
@@ -16,11 +20,14 @@ import {
     ActivityIndicator,
     StyleSheet,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as SplashScreen from 'expo-splash-screen';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// IMPORTANT: Initialize i18n before anything else
+// IMPORTANT: Initialize i18n BEFORE any components that use translations
+// This import has side effects - it initializes i18next
 // ═══════════════════════════════════════════════════════════════════════════
 import '@/i18n';
 
@@ -28,8 +35,12 @@ import { ThemeProvider, useTheme } from '@/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useServerHealth } from '@/shared/hooks/useServerHealth';
 
+// Prevent splash screen from auto-hiding until we're ready
+SplashScreen.preventAutoHideAsync();
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CONNECTION GATE
+// Shows loading screen while connecting to the server
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ConnectionGateProps {
@@ -39,6 +50,13 @@ interface ConnectionGateProps {
 function ConnectionGate({ children }: ConnectionGateProps) {
     const { colors, isDark } = useTheme();
     const { isConnected, isChecking, error, attempt } = useServerHealth();
+
+    // Hide splash screen once we have connection status
+    useEffect(() => {
+        if (!isChecking) {
+            SplashScreen.hideAsync();
+        }
+    }, [isChecking]);
 
     if (!isConnected || isChecking) {
         return (
@@ -69,7 +87,9 @@ function ConnectionGate({ children }: ConnectionGateProps) {
                 <View style={styles.statusContainer}>
                     <ActivityIndicator size="small" color={colors.text.primary} />
                     <Text style={[styles.statusText, { color: colors.text.secondary }]}>
-                        {error ? `Connecting... (attempt ${attempt})` : 'Connecting to server...'}
+                        {error
+                            ? `Retrying... (attempt ${attempt})`
+                            : 'Connecting to server...'}
                     </Text>
                 </View>
             </View>
@@ -81,31 +101,63 @@ function ConnectionGate({ children }: ConnectionGateProps) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTH NAVIGATOR
+// Handles authentication-based navigation
 // ═══════════════════════════════════════════════════════════════════════════
 
-function AuthNavigator({ children }: { children: React.ReactNode }) {
+interface AuthNavigatorProps {
+    children: React.ReactNode;
+}
+
+function AuthNavigator({ children }: AuthNavigatorProps) {
     const router = useRouter();
     const segments = useSegments();
     const navigationState = useRootNavigationState();
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, isLoading, initialize } = useAuthStore();
+    const [isInitialized, setIsInitialized] = useState(false);
 
+    // Initialize auth state on mount
     useEffect(() => {
-        if (!navigationState?.key) return;
+        const initAuth = async () => {
+            try {
+                await initialize();
+            } catch (error) {
+                console.error('[AuthNavigator] Initialization error:', error);
+            } finally {
+                setIsInitialized(true);
+            }
+        };
+
+        initAuth();
+    }, [initialize]);
+
+    // Handle navigation based on auth state
+    useEffect(() => {
+        if (!navigationState?.key || !isInitialized || isLoading) {
+            return;
+        }
 
         const inAuthGroup = segments[0] === '(auth)';
 
         if (!isAuthenticated && !inAuthGroup) {
+            // Not authenticated and not in auth group -> go to login
             router.replace('/(auth)/login');
         } else if (isAuthenticated && inAuthGroup) {
+            // Authenticated but in auth group -> go to main app
             router.replace('/');
         }
-    }, [isAuthenticated, segments, navigationState?.key, router]);
+    }, [isAuthenticated, segments, navigationState?.key, isInitialized, isLoading, router]);
+
+    // Show nothing while initializing to prevent flash
+    if (!isInitialized) {
+        return null;
+    }
 
     return <>{children}</>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THEMED APP CONTENT
+// Main app content with theme-aware styling
 // ═══════════════════════════════════════════════════════════════════════════
 
 function ThemedAppContent() {
@@ -114,7 +166,6 @@ function ThemedAppContent() {
     return (
         <ConnectionGate>
             <AuthNavigator>
-                <StatusBar style={isDark ? 'light' : 'dark'} />
                 <LinearGradient
                     colors={[
                         colors.gradient.start,
@@ -123,35 +174,27 @@ function ThemedAppContent() {
                     ]}
                     style={styles.gradient}
                 >
+                    <StatusBar style={isDark ? 'light' : 'dark'} />
                     <Stack
                         screenOptions={{
                             headerShown: false,
-                            contentStyle: { backgroundColor: 'transparent' },
-                            animation: 'slide_from_right',
+                            contentStyle: {
+                                backgroundColor: 'transparent',
+                            },
+                            animation: 'fade',
                         }}
                     >
-                        {/* Auth Group */}
-                        <Stack.Screen
-                            name="(auth)"
-                            options={{
-                                headerShown: false,
-                            }}
-                        />
+                        {/* Auth screens */}
+                        <Stack.Screen name="(auth)" />
 
-                        {/* Main Screens */}
+                        {/* Main app */}
                         <Stack.Screen name="index" />
 
-                        {/* Profile Modal */}
-                        <Stack.Screen
-                            name="profile"
-                            options={{
-                                presentation: 'transparentModal',
-                                animation: 'fade',
-                            }}
-                        />
-
                         {/* Topic Detail */}
-                        <Stack.Screen name="[topicId]/index" />
+                        <Stack.Screen
+                            name="[topicId]/index"
+                            options={{ animation: 'slide_from_right' }}
+                        />
 
                         {/* Session Recording Modal */}
                         <Stack.Screen
@@ -170,6 +213,12 @@ function ThemedAppContent() {
                                 animation: 'slide_from_bottom',
                             }}
                         />
+
+                        {/* Profile */}
+                        <Stack.Screen
+                            name="profile"
+                            options={{ animation: 'slide_from_right' }}
+                        />
                     </Stack>
                 </LinearGradient>
             </AuthNavigator>
@@ -179,13 +228,18 @@ function ThemedAppContent() {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT LAYOUT
+// The main entry point - wraps everything with required providers
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function RootLayout() {
     return (
-        <ThemeProvider>
-            <ThemedAppContent />
-        </ThemeProvider>
+        <GestureHandlerRootView style={styles.container}>
+            <SafeAreaProvider>
+                <ThemeProvider>
+                    <ThemedAppContent />
+                </ThemeProvider>
+            </SafeAreaProvider>
+        </GestureHandlerRootView>
     );
 }
 
@@ -194,6 +248,9 @@ export default function RootLayout() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
     gradient: {
         flex: 1,
     },

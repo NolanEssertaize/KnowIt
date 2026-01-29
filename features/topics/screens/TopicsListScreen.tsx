@@ -2,10 +2,16 @@
  * @file TopicsListScreen.tsx
  * @description Topics List Screen - Theme Aware, Internationalized
  *
- * UPDATED: All hardcoded strings replaced with i18n translations
+ * COMPREHENSIVE FIX:
+ * - Uses useTopicsList (correct hook name)
+ * - Uses TopicItemData type (correct type from main branch)
+ * - TopicCard receives `data` prop (not `topic`)
+ * - All hardcoded strings replaced with i18n translations
+ * - KPI stats cards restored (topics, sessions, streak)
+ * - Proper navigation with topicId
  */
 
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback } from 'react';
 import {
     View,
     Text,
@@ -15,18 +21,19 @@ import {
     ActivityIndicator,
     RefreshControl,
     StyleSheet,
-    ListRenderItem,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 
 import { ScreenWrapper, GlassView } from '@/shared/components';
 import { useTheme, Spacing, BorderRadius } from '@/theme';
-import { useLanguage, formatShortDate } from '@/i18n';
+import { ProfileButton } from '@/features/profile';
 
-import { useTopics, type TopicWithMeta } from '../hooks/useTopics';
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXED: Import the correct hook and types from main branch
+// ═══════════════════════════════════════════════════════════════════════════
+import { useTopicsList, type TopicItemData } from '../hooks/useTopicsList';
 import { TopicCard } from '../components/TopicCard';
 import { AddTopicModal } from '../components/AddTopicModal';
 import { CategoryFilter } from '../components/CategoryFilter';
@@ -36,123 +43,24 @@ import { CategoryFilter } from '../components/CategoryFilter';
 // ═══════════════════════════════════════════════════════════════════════════
 
 function TopicsListScreenComponent() {
-    const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { t } = useTranslation();
-    const { language, greeting } = useLanguage();
 
-    const logic = useTopics();
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // HANDLERS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const handleTopicPress = useCallback(
-        (topic: TopicWithMeta) => {
-            router.push(`/${topic.id}`);
-        },
-        [router]
-    );
-
-    const handleProfilePress = useCallback(() => {
-        router.push('/profile');
-    }, [router]);
+    // Use the correct hook from main branch
+    const logic = useTopicsList();
 
     // ─────────────────────────────────────────────────────────────────────────
-    // COMPUTED VALUES
+    // RENDER HELPERS
     // ─────────────────────────────────────────────────────────────────────────
-
-    const totalSessions = useMemo(() => {
-        return logic.filteredTopics.reduce((sum, topic) => sum + (topic.sessionCount || 0), 0);
-    }, [logic.filteredTopics]);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER FUNCTIONS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const renderItem: ListRenderItem<TopicWithMeta> = useCallback(
-        ({ item }) => (
-            <TopicCard
-                topic={item}
-                onPress={() => handleTopicPress(item)}
-                style={styles.topicCard}
-            />
-        ),
-        [handleTopicPress]
-    );
-
-    const keyExtractor = useCallback((item: TopicWithMeta) => item.id, []);
 
     const renderListHeader = useCallback(
         () => (
-            <View style={styles.listHeaderContainer}>
-                <Text style={[styles.listSectionTitle, { color: colors.text.secondary }]}>
-                    {t('topics.card.sessions_other', { count: logic.filteredTopics.length })} {t('topics.stats.topics')}
-                </Text>
-            </View>
-        ),
-        [colors.text.secondary, logic.filteredTopics.length, t]
-    );
-
-    const renderEmptyState = useCallback(
-        () => (
-            <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons
-                    name="book-open-variant"
-                    size={64}
-                    color={colors.text.muted}
-                />
-                <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
-                    {logic.searchText ? t('topics.search.noResults') : t('topics.empty.title')}
-                </Text>
-                <Text style={[styles.emptyDescription, { color: colors.text.secondary }]}>
-                    {logic.searchText
-                        ? t('topics.search.noResults')
-                        : t('topics.empty.description')}
-                </Text>
-                {!logic.searchText && (
-                    <Pressable
-                        style={[styles.emptyButton, { backgroundColor: colors.text.primary }]}
-                        onPress={() => logic.setShowAddModal(true)}
-                    >
-                        <MaterialIcons name="add" size={20} color={colors.text.inverse} />
-                        <Text style={[styles.emptyButtonText, { color: colors.text.inverse }]}>
-                            {t('topics.empty.action')}
-                        </Text>
-                    </Pressable>
-                )}
-            </View>
-        ),
-        [colors, logic.searchText, logic.setShowAddModal, t]
-    );
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // MAIN RENDER
-    // ─────────────────────────────────────────────────────────────────────────
-
-    return (
-        <ScreenWrapper useSafeArea padding={0}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={[styles.greeting, { color: colors.text.secondary }]}>
-                        {greeting}
-                    </Text>
-                    <Text style={[styles.title, { color: colors.text.primary }]}>
-                        {t('topics.title')}
-                    </Text>
-                </View>
-                <Pressable
-                    style={[styles.profileButton, { backgroundColor: colors.surface.glass }]}
-                    onPress={handleProfilePress}
-                >
-                    <MaterialIcons name="person" size={24} color={colors.text.primary} />
-                </Pressable>
-            </View>
-
-            {/* Stats Cards */}
-            <View style={styles.statsContainer}>
+            <View style={styles.listHeader}>
+                {/* ═══════════════════════════════════════════════════════════════
+                    KPI STATS CARDS - Restored from main branch
+                ═══════════════════════════════════════════════════════════════ */}
                 <View style={styles.statsRow}>
+                    {/* Topics Count */}
                     <GlassView
                         style={[styles.statCard, { borderColor: colors.glass.border }]}
                         showBorder
@@ -170,13 +78,14 @@ function TopicsListScreenComponent() {
                             />
                         </View>
                         <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                            {logic.filteredTopics.length}
+                            {logic.topicsCount}
                         </Text>
-                        <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+                        <Text style={[styles.statLabel, { color: colors.text.muted }]}>
                             {t('topics.stats.topics')}
                         </Text>
                     </GlassView>
 
+                    {/* Sessions Count */}
                     <GlassView
                         style={[styles.statCard, { borderColor: colors.glass.border }]}
                         showBorder
@@ -194,19 +103,43 @@ function TopicsListScreenComponent() {
                             />
                         </View>
                         <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                            {totalSessions}
+                            {logic.totalSessions}
                         </Text>
-                        <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+                        <Text style={[styles.statLabel, { color: colors.text.muted }]}>
                             {t('topics.stats.sessions')}
                         </Text>
                     </GlassView>
-                </View>
-            </View>
 
-            {/* Search & Filters */}
-            <View style={styles.filtersContainer}>
-                {/* Search Bar */}
-                <GlassView style={styles.searchBar} showBorder>
+                    {/* Streak */}
+                    <GlassView
+                        style={[styles.statCard, { borderColor: colors.glass.border }]}
+                        showBorder
+                    >
+                        <View
+                            style={[
+                                styles.statIconContainer,
+                                { backgroundColor: colors.surface.glass },
+                            ]}
+                        >
+                            <MaterialCommunityIcons
+                                name="fire"
+                                size={20}
+                                color={colors.text.primary}
+                            />
+                        </View>
+                        <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                            {logic.streak}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: colors.text.muted }]}>
+                            {t('topics.stats.streak')}
+                        </Text>
+                    </GlassView>
+                </View>
+
+                {/* ═══════════════════════════════════════════════════════════════
+                    SEARCH BAR
+                ═══════════════════════════════════════════════════════════════ */}
+                <GlassView style={styles.searchContainer} showBorder>
                     <MaterialCommunityIcons name="magnify" size={22} color={colors.text.muted} />
                     <TextInput
                         style={[styles.searchInput, { color: colors.text.primary }]}
@@ -214,6 +147,8 @@ function TopicsListScreenComponent() {
                         placeholderTextColor={colors.text.muted}
                         value={logic.searchText}
                         onChangeText={logic.setSearchText}
+                        autoCapitalize="none"
+                        autoCorrect={false}
                     />
                     {logic.searchText.length > 0 && (
                         <Pressable onPress={() => logic.setSearchText('')}>
@@ -226,26 +161,160 @@ function TopicsListScreenComponent() {
                     )}
                 </GlassView>
 
-                {/* Category Filter */}
+                {/* ═══════════════════════════════════════════════════════════════
+                    CATEGORY FILTER
+                ═══════════════════════════════════════════════════════════════ */}
                 <CategoryFilter
                     selectedCategory={logic.selectedCategory}
                     onSelectCategory={logic.setSelectedCategory}
                 />
+
+                {/* ═══════════════════════════════════════════════════════════════
+                    SECTION HEADER WITH SWIPE HINT
+                ═══════════════════════════════════════════════════════════════ */}
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>
+                        {t('topics.categories.all')}
+                    </Text>
+                    <Text style={[styles.sectionCount, { color: colors.text.muted }]}>
+                        {logic.filteredTopics.length} {t('topics.stats.topics')}
+                    </Text>
+                </View>
+
+                {/* Swipe hint */}
+                <View style={styles.swipeHintContainer}>
+                    <MaterialIcons name="swipe" size={14} color={colors.text.muted} />
+                    <Text style={[styles.swipeHint, { color: colors.text.muted }]}>
+                        {t('topics.card.swipeHint')}
+                    </Text>
+                </View>
+
+                {/* Active filters indicator */}
+                {logic.hasActiveFilters && (
+                    <Pressable
+                        onPress={logic.resetFilters}
+                        style={[styles.activeFiltersBar, { backgroundColor: colors.surface.glass }]}
+                    >
+                        <Text style={[styles.activeFiltersText, { color: colors.text.primary }]}>
+                            {t('topics.search.activeFilters')}
+                        </Text>
+                        <MaterialCommunityIcons name="close-circle" size={16} color={colors.text.primary} />
+                    </Pressable>
+                )}
+            </View>
+        ),
+        [
+            colors,
+            t,
+            logic.searchText,
+            logic.setSearchText,
+            logic.selectedCategory,
+            logic.setSelectedCategory,
+            logic.topicsCount,
+            logic.totalSessions,
+            logic.streak,
+            logic.filteredTopics.length,
+            logic.hasActiveFilters,
+            logic.resetFilters,
+        ]
+    );
+
+    // FIXED: TopicCard uses `data` prop with TopicItemData type (main branch interface)
+    const renderItem = useCallback(
+        ({ item }: { item: TopicItemData }) => (
+            <TopicCard
+                data={item}
+                onPress={() => logic.handleCardPress(item.topic.id)}
+                onEdit={() => logic.handleEdit(item.topic.id)}
+                onShare={() => logic.handleShare(item.topic.id)}
+                onDelete={() => logic.handleDelete(item.topic.id)}
+                registerRef={(ref) => logic.registerSwipeableRef(item.topic.id, ref)}
+                unregisterRef={() => logic.unregisterSwipeableRef(item.topic.id)}
+            />
+        ),
+        [
+            logic.handleCardPress,
+            logic.handleEdit,
+            logic.handleShare,
+            logic.handleDelete,
+            logic.registerSwipeableRef,
+            logic.unregisterSwipeableRef,
+        ]
+    );
+
+    const renderEmptyState = useCallback(
+        () => (
+            <View style={styles.emptyContainer}>
+                <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface.glass }]}>
+                    <MaterialCommunityIcons
+                        name="book-plus"
+                        size={48}
+                        color={colors.text.primary}
+                    />
+                </View>
+                <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
+                    {t('topics.empty.title')}
+                </Text>
+                <Text style={[styles.emptyDescription, { color: colors.text.secondary }]}>
+                    {logic.hasActiveFilters
+                        ? t('topics.search.noResults')
+                        : t('topics.empty.description')}
+                </Text>
+                {!logic.hasActiveFilters && (
+                    <Pressable
+                        style={[styles.emptyButton, { backgroundColor: colors.text.primary }]}
+                        onPress={() => logic.setShowAddModal(true)}
+                    >
+                        <MaterialIcons name="add" size={20} color={colors.text.inverse} />
+                        <Text style={[styles.emptyButtonText, { color: colors.text.inverse }]}>
+                            {t('topics.empty.action')}
+                        </Text>
+                    </Pressable>
+                )}
+            </View>
+        ),
+        [logic.hasActiveFilters, logic.setShowAddModal, colors, t]
+    );
+
+    // FIXED: Use item.topic.id for unique key (main branch structure)
+    const keyExtractor = useCallback((item: TopicItemData) => item.topic.id, []);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RENDER
+    // ─────────────────────────────────────────────────────────────────────────
+
+    return (
+        <ScreenWrapper scrollable={false} padding={0}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View>
+                    <Text style={[styles.greeting, { color: colors.text.secondary }]}>
+                        {logic.greeting}
+                    </Text>
+                    <Text style={[styles.title, { color: colors.text.primary }]}>
+                        {t('topics.greeting.ready')}
+                    </Text>
+                </View>
+                <ProfileButton />
             </View>
 
             {/* Loading State */}
             {logic.isLoading && logic.filteredTopics.length === 0 ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.text.primary} />
+                    <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+                        {t('common.loading')}
+                    </Text>
                 </View>
             ) : (
+                /* Topics List */
                 <FlatList
                     data={logic.filteredTopics}
                     renderItem={renderItem}
                     keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.listContent}
                     ListHeaderComponent={renderListHeader}
                     ListEmptyComponent={renderEmptyState}
+                    contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl
@@ -258,7 +327,7 @@ function TopicsListScreenComponent() {
                 />
             )}
 
-            {/* FAB */}
+            {/* FAB - Add Topic */}
             <View style={styles.fabContainer}>
                 <Pressable
                     style={({ pressed }) => [
@@ -272,13 +341,16 @@ function TopicsListScreenComponent() {
                 </Pressable>
             </View>
 
-            {/* Add Topic Modal */}
+            {/* Add Topic Modal - Using main branch prop interface */}
             <AddTopicModal
                 visible={logic.showAddModal}
+                onClose={() => {
+                    logic.setShowAddModal(false);
+                    logic.setNewTopicText('');
+                }}
+                onSubmit={logic.handleAddTopic}
                 value={logic.newTopicText}
                 onChangeText={logic.setNewTopicText}
-                onSubmit={logic.handleAddTopic}
-                onClose={() => logic.setShowAddModal(false)}
             />
         </ScreenWrapper>
     );
@@ -307,17 +379,16 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: '700',
     },
-    profileButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    statsContainer: {
+    listContent: {
         paddingHorizontal: Spacing.lg,
+        paddingBottom: 100,
+    },
+    listHeader: {
         marginBottom: Spacing.md,
     },
+    // ═══════════════════════════════════════════════════════════════════════
+    // STATS CARDS
+    // ═══════════════════════════════════════════════════════════════════════
     statsRow: {
         flexDirection: 'row',
         gap: Spacing.sm,
@@ -343,87 +414,131 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     statLabel: {
-        fontSize: 12,
-    },
-    filtersContainer: {
-        paddingHorizontal: Spacing.lg,
-        marginBottom: Spacing.md,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: BorderRadius.md,
-        gap: Spacing.sm,
-        marginBottom: Spacing.sm,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-        padding: 0,
-    },
-    listContent: {
-        paddingHorizontal: Spacing.lg,
-        paddingBottom: 100,
-    },
-    listHeaderContainer: {
-        marginBottom: Spacing.sm,
-    },
-    listSectionTitle: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    topicCard: {
-        marginBottom: Spacing.sm,
+    // ═══════════════════════════════════════════════════════════════════════
+    // SEARCH
+    // ═══════════════════════════════════════════════════════════════════════
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        marginBottom: Spacing.md,
+        gap: Spacing.sm,
     },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        paddingVertical: 4,
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION HEADER
+    // ═══════════════════════════════════════════════════════════════════════
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.xs,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    sectionCount: {
+        fontSize: 12,
+    },
+    swipeHintContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: Spacing.md,
+    },
+    swipeHint: {
+        fontSize: 11,
+    },
+    activeFiltersBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginBottom: Spacing.md,
+    },
+    activeFiltersText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOADING
+    // ═══════════════════════════════════════════════════════════════════════
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        gap: Spacing.md,
     },
+    loadingText: {
+        fontSize: 14,
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMPTY STATE
+    // ═══════════════════════════════════════════════════════════════════════
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: Spacing.xxl * 2,
+        gap: Spacing.md,
+    },
+    emptyIconContainer: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Spacing.md,
     },
     emptyTitle: {
         fontSize: 20,
         fontWeight: '600',
-        marginTop: Spacing.lg,
-        marginBottom: Spacing.sm,
     },
     emptyDescription: {
         fontSize: 14,
         textAlign: 'center',
-        marginBottom: Spacing.lg,
+        maxWidth: 280,
     },
     emptyButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
         borderRadius: BorderRadius.md,
+        marginTop: Spacing.md,
         gap: Spacing.xs,
     },
     emptyButtonText: {
         fontSize: 14,
         fontWeight: '600',
     },
+    // ═══════════════════════════════════════════════════════════════════════
+    // FAB
+    // ═══════════════════════════════════════════════════════════════════════
     fabContainer: {
         position: 'absolute',
-        bottom: Spacing.xl,
         right: Spacing.lg,
+        bottom: Spacing.xl,
     },
     fab: {
         width: 56,
         height: 56,
         borderRadius: 28,
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,

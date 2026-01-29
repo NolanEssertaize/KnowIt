@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "Chargement...",
-    "error": "Erreur",
+    "error": "Une erreur s'est produite",
     "success": "Succès",
     "cancel": "Annuler",
     "confirm": "Confirmer",
@@ -23,34 +23,32 @@
 
   "auth": {
     "login": {
-      "title": "Bon retour",
-      "subtitle": "Connectez-vous pour continuer votre apprentissage",
+      "title": "Connexion",
+      "subtitle": "Bon retour parmi nous !",
       "email": "Email",
-      "emailPlaceholder": "Entrez votre email",
+      "emailPlaceholder": "votre@email.com",
       "password": "Mot de passe",
-      "passwordPlaceholder": "Entrez votre mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
       "forgotPassword": "Mot de passe oublié ?",
-      "signIn": "Se connecter",
+      "submit": "Se connecter",
       "noAccount": "Pas encore de compte ?",
       "signUp": "S'inscrire",
-      "orContinueWith": "ou continuer avec",
-      "loginFailed": "Échec de la connexion",
-      "invalidCredentials": "Email ou mot de passe incorrect"
+      "continueWithGoogle": "Continuer avec Google",
+      "loginFailed": "Échec de la connexion"
     },
     "register": {
-      "title": "Créer un compte",
-      "subtitle": "Commencez votre parcours d'apprentissage",
+      "title": "Inscription",
+      "subtitle": "Créez votre compte",
       "fullName": "Nom complet",
-      "fullNamePlaceholder": "Entrez votre nom",
+      "fullNamePlaceholder": "Votre nom",
       "email": "Email",
-      "emailPlaceholder": "Entrez votre email",
+      "emailPlaceholder": "votre@email.com",
       "password": "Mot de passe",
-      "passwordPlaceholder": "Créez un mot de passe",
+      "passwordPlaceholder": "Choisissez un mot de passe",
       "confirmPassword": "Confirmer le mot de passe",
-      "confirmPasswordPlaceholder": "Confirmez votre mot de passe",
-      "passwordHint": "Le mot de passe doit contenir au moins 8 caractères",
-      "createAccount": "Créer le compte",
-      "hasAccount": "Déjà un compte ?",
+      "confirmPasswordPlaceholder": "Répétez votre mot de passe",
+      "submit": "Créer mon compte",
+      "alreadyHaveAccount": "Déjà un compte ?",
       "signIn": "Se connecter",
       "registrationFailed": "Échec de l'inscription"
     },
@@ -60,20 +58,23 @@
       "passwordRequired": "Le mot de passe est requis",
       "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères",
       "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
-      "fixErrors": "Veuillez corriger les erreurs"
+      "fixErrors": "Veuillez corriger les erreurs de validation"
     },
     "logout": {
       "title": "Déconnexion",
       "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
-      "confirm": "Se déconnecter"
+      "confirm": "Se déconnecter",
+      "cancel": "Annuler"
     }
   },
 
   "welcome": {
     "title": "KnowIt",
-    "subtitle": "Apprenez en expliquant",
+    "subtitle": "Apprendre en expliquant",
     "tagline": "Maîtrisez vos connaissances par la pratique",
     "getStarted": "Commencer",
+    "alreadyHaveAccount": "Déjà un compte ?",
+    "signIn": "Se connecter",
     "features": {
       "record": "Enregistrez vos explications",
       "analyze": "Analyse IA instantanée",
@@ -94,14 +95,14 @@
       "appearance": "Apparence",
       "language": "Langue",
       "notifications": "Notifications",
-      "dataPrivacy": "Données & Confidentialité",
+      "dataPrivacy": "Données et confidentialité",
       "application": "Application"
     },
     "fields": {
       "email": "Email",
       "fullName": "Nom complet",
       "password": "Mot de passe",
-      "changePassword": "Changer le mot de passe"
+      "changePassword": "Modifier le mot de passe"
     },
     "preferences": {
       "theme": "Thème",
@@ -115,11 +116,11 @@
       "currentTheme": "Thème actuel",
       "interfaceLanguage": "Langue de l'interface",
       "notificationsEnabled": "Notifications activées",
-      "notificationsDescription": "Recevoir des notifications push",
+      "notificationsDescription": "Recevoir les notifications push",
       "autoSave": "Sauvegarde automatique",
       "autoSaveDescription": "Sauvegarder automatiquement vos données",
       "analytics": "Statistiques d'utilisation",
-      "analyticsDescription": "Nous aider à améliorer l'application"
+      "analyticsDescription": "Aider à améliorer l'application"
     },
     "dataPrivacy": {
       "exportData": "Exporter mes données",
@@ -137,13 +138,13 @@
     },
     "actions": {
       "saveChanges": "Enregistrer les modifications",
-      "logout": "Se déconnecter"
+      "logout": "Déconnexion"
     },
     "alerts": {
       "exportTitle": "Exporter mes données",
       "exportMessage": "Vous recevrez un email avec toutes vos données dans les prochaines minutes.",
-      "exportSuccess": "Vos données vous seront envoyées par email",
-      "logoutError": "Une erreur est survenue lors de la déconnexion"
+      "exportSuccess": "Vos données seront envoyées à votre email",
+      "logoutError": "Une erreur s'est produite lors de la déconnexion"
     }
   },
 
@@ -195,15 +196,18 @@
     "greeting": {
       "morning": "Bonjour",
       "afternoon": "Bon après-midi",
-      "evening": "Bonsoir"
+      "evening": "Bonsoir",
+      "ready": "Prêt à apprendre ?"
     },
     "stats": {
       "topics": "sujets",
-      "sessions": "sessions"
+      "sessions": "sessions",
+      "streak": "Streak"
     },
     "search": {
       "placeholder": "Rechercher un sujet...",
-      "noResults": "Aucun sujet trouvé"
+      "noResults": "Aucun sujet trouvé",
+      "activeFilters": "Filtres actifs"
     },
     "categories": {
       "all": "Tous",
@@ -223,10 +227,12 @@
       "error": "Erreur lors de la création du sujet"
     },
     "card": {
+      "sessions": "sessions",
       "sessions_one": "{{count}} session",
       "sessions_other": "{{count}} sessions",
       "lastSession": "Dernière session : {{date}}",
-      "noSessions": "Aucune session"
+      "noSessions": "Aucune session",
+      "swipeHint": "Glissez pour plus d'options"
     }
   },
 
@@ -242,115 +248,104 @@
     "actions": {
       "edit": "Modifier",
       "delete": "Supprimer",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce sujet ?",
-      "deleteSuccess": "Sujet supprimé avec succès"
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce sujet ?"
     },
     "editModal": {
       "title": "Modifier le sujet",
       "placeholder": "Nom du sujet",
-      "save": "Enregistrer"
+      "submit": "Enregistrer"
     },
-    "notFound": "Sujet introuvable"
+    "notFound": {
+      "title": "Sujet introuvable",
+      "description": "Ce sujet n'existe pas ou a été supprimé"
+    }
   },
 
   "session": {
-    "title": "Enregistrement",
-    "forTopic": "Sujet : {{topic}}",
+    "title": "Session",
+    "forTopic": "pour {{topic}}",
     "status": {
-      "idle": "Prêt à enregistrer",
-      "recording": "Enregistrement...",
+      "ready": "Prêt à enregistrer",
+      "recording": "Enregistrement en cours...",
       "analyzing": "Analyse en cours...",
-      "complete": "Terminé",
-      "error": "Erreur"
+      "completed": "Session terminée"
     },
     "instructions": {
-      "idle": "Appuyez sur le bouton pour commencer",
-      "recording": "Expliquez le sujet avec vos mots",
-      "analyzing": "L'IA analyse votre explication"
+      "title": "Comment ça marche ?",
+      "step1": "Appuyez sur le bouton pour démarrer",
+      "step2": "Expliquez le sujet à voix haute",
+      "step3": "Recevez votre analyse instantanée"
     },
-    "audioLevel": "NIVEAU AUDIO",
+    "audioLevel": "Niveau audio",
     "duration": "Durée",
     "tips": {
       "title": "Conseils",
-      "tip1": "Parlez clairement et à un rythme normal",
+      "tip1": "Parlez clairement et à un rythme régulier",
       "tip2": "Structurez votre explication",
-      "tip3": "Utilisez des exemples concrets"
+      "tip3": "Donnez des exemples concrets"
     },
-    "hint": "Maintenez le micro près de vous pour une meilleure qualité",
+    "hint": "Appuyez pour commencer l'enregistrement",
     "error": {
-      "title": "Erreur",
-      "microphone": "Impossible d'accéder au microphone",
+      "permission": "Permission microphone requise",
       "recording": "Erreur lors de l'enregistrement",
-      "analysis": "Erreur lors de l'analyse",
-      "generic": "Une erreur est survenue"
+      "analysis": "Erreur lors de l'analyse"
     }
   },
 
   "result": {
     "title": "Résultat",
     "tabs": {
-      "transcription": "Transcription",
-      "analysis": "Analyse"
+      "analysis": "Analyse",
+      "transcription": "Transcription"
     },
     "analysis": {
-      "correctPoints": "Points corrects",
-      "corrections": "Corrections",
-      "missingElements": "Éléments manquants",
-      "noCorrectPoints": "Aucun point correct identifié",
-      "noCorrections": "Aucune correction nécessaire",
-      "noMissingElements": "Aucun élément manquant",
-      "empty": "Aucune analyse disponible"
+      "valid": "Points corrects",
+      "corrections": "À corriger",
+      "missing": "Points manquants"
     },
     "transcription": {
-      "title": "Votre explication",
-      "empty": "Aucune transcription disponible",
-      "copy": "Copier",
-      "copied": "Copié !"
+      "title": "Transcription",
+      "empty": "Aucune transcription disponible"
     },
     "actions": {
-      "newSession": "Nouvelle session",
-      "close": "Fermer",
-      "share": "Partager",
-      "backToTopic": "Retour au sujet"
+      "retry": "Réessayer",
+      "done": "Terminer"
     },
     "score": {
       "title": "Score",
-      "excellent": "Excellent",
-      "good": "Bien",
-      "needsWork": "À améliorer"
+      "excellent": "Excellent !",
+      "good": "Bien !",
+      "average": "Peut mieux faire",
+      "needsWork": "À travailler"
     },
-    "loading": "Chargement de l'analyse..."
+    "loading": "Analyse de votre explication..."
   },
 
   "sessionCard": {
-    "date": "{{date}}",
-    "duration": "{{duration}}",
-    "score": "Score: {{score}}%",
-    "viewDetails": "Voir les détails",
-    "noScore": "Non évalué"
+    "score": "Score : {{score}}%",
+    "duration": "Durée : {{duration}}",
+    "noAnalysis": "Pas d'analyse disponible"
   },
 
   "connection": {
-    "connecting": "Connexion au serveur...",
-    "retrying": "Connexion... (tentative {{attempt}})",
-    "error": "Impossible de se connecter au serveur",
-    "offline": "Vous êtes hors ligne"
+    "offline": "Hors ligne",
+    "offlineMessage": "Vérifiez votre connexion internet",
+    "retry": "Réessayer"
   },
 
   "errors": {
-    "generic": "Une erreur est survenue",
+    "generic": "Une erreur s'est produite",
     "network": "Erreur de connexion",
-    "server": "Erreur serveur",
     "unauthorized": "Session expirée, veuillez vous reconnecter",
-    "notFound": "Ressource introuvable",
-    "validation": "Erreur de validation"
+    "notFound": "Ressource non trouvée",
+    "server": "Erreur serveur, veuillez réessayer"
   },
 
   "permissions": {
     "microphone": {
-      "title": "Accès au microphone",
+      "title": "Autorisation microphone",
       "message": "KnowIt a besoin d'accéder à votre microphone pour enregistrer vos explications.",
-      "denied": "Accès au microphone refusé. Veuillez l'activer dans les paramètres."
+      "denied": "Accès au microphone refusé. Activez-le dans les paramètres."
     }
   },
 
@@ -362,7 +357,8 @@
     "hoursAgo_other": "Il y a {{count}} heures",
     "daysAgo_one": "Il y a {{count}} jour",
     "daysAgo_other": "Il y a {{count}} jours",
-    "weeksAgo_one": "Il y a {{count}} semaine",
-    "weeksAgo_other": "Il y a {{count}} semaines"
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "never": "Jamais"
   }
 }

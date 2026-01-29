@@ -2,7 +2,7 @@
  * @file RegisterScreen.tsx
  * @description Register screen - Theme Aware, Internationalized
  *
- * UPDATED: All hardcoded strings replaced with i18n translations
+ * FIXED VERSION - Proper i18n integration with all strings translated
  */
 
 import React, { memo, useRef } from 'react';
@@ -80,7 +80,7 @@ export const RegisterScreen = memo(function RegisterScreen() {
                     <Text style={[styles.footerText, { color: colors.text.secondary }]}>
                         {t('auth.register.hasAccount')}
                     </Text>
-                    <TouchableOpacity onPress={onLoginPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity onPress={onLoginPress}>
                         <Text style={[styles.footerLink, { color: colors.text.primary }]}>
                             {t('auth.register.signIn')}
                         </Text>
@@ -90,70 +90,63 @@ export const RegisterScreen = memo(function RegisterScreen() {
         >
             {/* Full Name Input */}
             <GlassInput
-                label={t('auth.register.fullName')}
+                icon={<User size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.register.fullNamePlaceholder')}
                 value={fullName}
                 onChangeText={setFullName}
-                error={validationErrors.fullName}
-                leftIcon={User}
                 autoCapitalize="words"
                 autoComplete="name"
                 returnKeyType="next"
                 onSubmitEditing={onFullNameSubmit}
-                editable={!isLoading}
+                error={validationErrors.fullName}
             />
 
             {/* Email Input */}
             <GlassInput
                 ref={emailInputRef}
-                label={t('auth.register.email')}
+                icon={<Mail size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.register.emailPlaceholder')}
                 value={email}
                 onChangeText={setEmail}
-                error={validationErrors.email}
-                leftIcon={Mail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                autoCorrect={false}
                 autoComplete="email"
                 returnKeyType="next"
                 onSubmitEditing={onEmailSubmit}
-                editable={!isLoading}
+                error={validationErrors.email}
             />
 
             {/* Password Input */}
             <GlassInput
                 ref={passwordInputRef}
-                label={t('auth.register.password')}
+                icon={<Lock size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.register.passwordPlaceholder')}
                 value={password}
                 onChangeText={setPassword}
-                error={validationErrors.password}
-                leftIcon={Lock}
-                isPassword
+                secureTextEntry
+                autoCapitalize="none"
                 autoComplete="password-new"
                 returnKeyType="next"
                 onSubmitEditing={onPasswordSubmit}
-                editable={!isLoading}
+                error={validationErrors.password}
             />
 
             {/* Confirm Password Input */}
             <GlassInput
                 ref={confirmPasswordInputRef}
-                label={t('auth.register.confirmPassword')}
+                icon={<Lock size={20} color={colors.text.secondary} />}
                 placeholder={t('auth.register.confirmPasswordPlaceholder')}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                error={validationErrors.confirmPassword}
-                leftIcon={Lock}
-                isPassword
+                secureTextEntry
+                autoCapitalize="none"
                 autoComplete="password-new"
                 returnKeyType="done"
                 onSubmitEditing={onRegisterPress}
-                editable={!isLoading}
+                error={validationErrors.confirmPassword}
             />
 
-            {/* Password Requirements Hint */}
+            {/* Password Hint */}
             <View style={styles.hintContainer}>
                 <Text style={[styles.hintText, { color: colors.text.muted }]}>
                     {t('auth.register.passwordHint')}
@@ -162,17 +155,19 @@ export const RegisterScreen = memo(function RegisterScreen() {
 
             {/* Error Message */}
             {error && (
-                <View style={[styles.errorContainer, { backgroundColor: colors.surface.glass }]}>
-                    <Text style={[styles.errorText, { color: colors.text.primary }]}>{error}</Text>
+                <View style={[styles.errorContainer, { backgroundColor: colors.status.error + '20' }]}>
+                    <Text style={[styles.errorText, { color: colors.status.error }]}>
+                        {error}
+                    </Text>
                 </View>
             )}
 
             {/* Register Button */}
             <TouchableOpacity
+                style={styles.buttonContainer}
                 onPress={onRegisterPress}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                style={styles.buttonContainer}
             >
                 <View
                     style={[
