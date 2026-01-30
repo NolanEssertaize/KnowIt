@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "Loading...",
-    "error": "An error occurred",
+    "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -15,54 +15,51 @@
     "no": "No",
     "ok": "OK",
     "search": "Search",
-    "noResults": "No results",
-    "required": "Required",
-    "optional": "Optional",
-    "or": "or"
+    "noResults": "No results"
   },
 
   "auth": {
     "login": {
       "title": "Login",
-      "subtitle": "Welcome back!",
+      "subtitle": "Sign in to access your topics",
       "email": "Email",
       "emailPlaceholder": "your@email.com",
       "password": "Password",
-      "passwordPlaceholder": "Your password",
+      "passwordPlaceholder": "••••••••",
       "forgotPassword": "Forgot password?",
-      "submit": "Sign In",
+      "signIn": "Sign In",
       "noAccount": "Don't have an account?",
       "signUp": "Sign Up",
-      "continueWithGoogle": "Continue with Google",
-      "loginFailed": "Login Failed"
+      "orContinueWith": "Or continue with",
+      "loginFailed": "Login failed"
     },
     "register": {
-      "title": "Sign Up",
-      "subtitle": "Create your account",
+      "title": "Create Account",
+      "subtitle": "Sign up to get started",
       "fullName": "Full Name",
-      "fullNamePlaceholder": "Your name",
+      "fullNamePlaceholder": "John Doe",
       "email": "Email",
       "emailPlaceholder": "your@email.com",
       "password": "Password",
-      "passwordPlaceholder": "Choose a password",
+      "passwordPlaceholder": "••••••••",
       "confirmPassword": "Confirm Password",
-      "confirmPasswordPlaceholder": "Repeat your password",
-      "submit": "Create Account",
-      "alreadyHaveAccount": "Already have an account?",
-      "signIn": "Sign In",
-      "registrationFailed": "Registration Failed"
+      "confirmPasswordPlaceholder": "••••••••",
+      "passwordHint": "Minimum 8 characters",
+      "createAccount": "Create Account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In"
     },
     "validation": {
       "emailRequired": "Email is required",
-      "emailInvalid": "Invalid email format",
+      "emailInvalid": "Invalid email",
       "passwordRequired": "Password is required",
-      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordTooShort": "Minimum 8 characters",
       "passwordsDoNotMatch": "Passwords do not match",
-      "fixErrors": "Please fix validation errors"
+      "fixErrors": "Please fix the errors"
     },
     "logout": {
       "title": "Logout",
-      "message": "Are you sure you want to logout?",
+      "message": "Are you sure you want to log out?",
       "confirm": "Logout",
       "cancel": "Cancel"
     }
@@ -265,13 +262,19 @@
     "title": "Session",
     "forTopic": "for {{topic}}",
     "status": {
+      "idle": "Ready to record",
       "ready": "Ready to record",
       "recording": "Recording...",
       "analyzing": "Analyzing...",
-      "completed": "Session completed"
+      "completed": "Session completed",
+      "complete": "Session completed",
+      "error": "Error"
     },
     "instructions": {
       "title": "How it works?",
+      "idle": "Tap the button to start recording",
+      "recording": "Explain the topic out loud, then tap to stop",
+      "analyzing": "We are analyzing your explanation...",
       "step1": "Tap the button to start",
       "step2": "Explain the topic out loud",
       "step3": "Get your instant analysis"
@@ -287,6 +290,7 @@
     "hint": "Tap to start recording",
     "error": {
       "permission": "Microphone permission required",
+      "microphone": "Microphone access error",
       "recording": "Recording error",
       "analysis": "Analysis error"
     }
@@ -300,16 +304,25 @@
     },
     "analysis": {
       "valid": "Correct points",
+      "correctPoints": "Correct points",
       "corrections": "To correct",
-      "missing": "Missing points"
+      "missing": "Missing points",
+      "missingElements": "Missing elements",
+      "noCorrectPoints": "No correct points identified",
+      "noCorrections": "No corrections needed",
+      "noMissingElements": "No missing elements"
     },
     "transcription": {
       "title": "Transcription",
-      "empty": "No transcription available"
+      "empty": "No transcription available",
+      "copy": "Copy",
+      "copied": "Copied!"
     },
     "actions": {
       "retry": "Retry",
-      "done": "Done"
+      "done": "Done",
+      "newSession": "New session",
+      "close": "Close"
     },
     "score": {
       "title": "Score",

@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "Chargement...",
-    "error": "Une erreur s'est produite",
+    "error": "Erreur",
     "success": "Succès",
     "cancel": "Annuler",
     "confirm": "Confirmer",
@@ -15,50 +15,47 @@
     "no": "Non",
     "ok": "OK",
     "search": "Rechercher",
-    "noResults": "Aucun résultat",
-    "required": "Requis",
-    "optional": "Optionnel",
-    "or": "ou"
+    "noResults": "Aucun résultat"
   },
 
   "auth": {
     "login": {
       "title": "Connexion",
-      "subtitle": "Bon retour parmi nous !",
+      "subtitle": "Connectez-vous pour accéder à vos sujets",
       "email": "Email",
       "emailPlaceholder": "votre@email.com",
       "password": "Mot de passe",
-      "passwordPlaceholder": "Votre mot de passe",
+      "passwordPlaceholder": "••••••••",
       "forgotPassword": "Mot de passe oublié ?",
-      "submit": "Se connecter",
+      "signIn": "Se connecter",
       "noAccount": "Pas encore de compte ?",
       "signUp": "S'inscrire",
-      "continueWithGoogle": "Continuer avec Google",
+      "orContinueWith": "Ou continuer avec",
       "loginFailed": "Échec de la connexion"
     },
     "register": {
-      "title": "Inscription",
-      "subtitle": "Créez votre compte",
+      "title": "Créer un compte",
+      "subtitle": "Inscrivez-vous pour commencer",
       "fullName": "Nom complet",
-      "fullNamePlaceholder": "Votre nom",
+      "fullNamePlaceholder": "Jean Dupont",
       "email": "Email",
       "emailPlaceholder": "votre@email.com",
       "password": "Mot de passe",
-      "passwordPlaceholder": "Choisissez un mot de passe",
+      "passwordPlaceholder": "••••••••",
       "confirmPassword": "Confirmer le mot de passe",
-      "confirmPasswordPlaceholder": "Répétez votre mot de passe",
-      "submit": "Créer mon compte",
-      "alreadyHaveAccount": "Déjà un compte ?",
-      "signIn": "Se connecter",
-      "registrationFailed": "Échec de l'inscription"
+      "confirmPasswordPlaceholder": "••••••••",
+      "passwordHint": "8 caractères minimum",
+      "createAccount": "Créer le compte",
+      "hasAccount": "Déjà un compte ?",
+      "signIn": "Se connecter"
     },
     "validation": {
       "emailRequired": "L'email est requis",
-      "emailInvalid": "Format d'email invalide",
+      "emailInvalid": "Email invalide",
       "passwordRequired": "Le mot de passe est requis",
-      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères",
+      "passwordTooShort": "8 caractères minimum",
       "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
-      "fixErrors": "Veuillez corriger les erreurs de validation"
+      "fixErrors": "Veuillez corriger les erreurs"
     },
     "logout": {
       "title": "Déconnexion",
@@ -70,14 +67,14 @@
 
   "welcome": {
     "title": "KnowIt",
-    "subtitle": "Apprendre en expliquant",
+    "subtitle": "Apprendre en Expliquant",
     "tagline": "Maîtrisez vos connaissances par la pratique",
     "getStarted": "Commencer",
     "alreadyHaveAccount": "Déjà un compte ?",
     "signIn": "Se connecter",
     "features": {
       "record": "Enregistrez vos explications",
-      "analyze": "Analyse IA instantanée",
+      "analyze": "Analyse instantanée par IA",
       "improve": "Progressez rapidement"
     }
   },
@@ -95,14 +92,14 @@
       "appearance": "Apparence",
       "language": "Langue",
       "notifications": "Notifications",
-      "dataPrivacy": "Données et confidentialité",
+      "dataPrivacy": "Données & Confidentialité",
       "application": "Application"
     },
     "fields": {
       "email": "Email",
       "fullName": "Nom complet",
       "password": "Mot de passe",
-      "changePassword": "Modifier le mot de passe"
+      "changePassword": "Changer le mot de passe"
     },
     "preferences": {
       "theme": "Thème",
@@ -116,11 +113,11 @@
       "currentTheme": "Thème actuel",
       "interfaceLanguage": "Langue de l'interface",
       "notificationsEnabled": "Notifications activées",
-      "notificationsDescription": "Recevoir les notifications push",
+      "notificationsDescription": "Recevoir des notifications push",
       "autoSave": "Sauvegarde automatique",
       "autoSaveDescription": "Sauvegarder automatiquement vos données",
       "analytics": "Statistiques d'utilisation",
-      "analyticsDescription": "Aider à améliorer l'application"
+      "analyticsDescription": "Aidez-nous à améliorer l'application"
     },
     "dataPrivacy": {
       "exportData": "Exporter mes données",
@@ -265,13 +262,19 @@
     "title": "Session",
     "forTopic": "pour {{topic}}",
     "status": {
+      "idle": "Prêt à enregistrer",
       "ready": "Prêt à enregistrer",
       "recording": "Enregistrement en cours...",
       "analyzing": "Analyse en cours...",
-      "completed": "Session terminée"
+      "completed": "Session terminée",
+      "complete": "Session terminée",
+      "error": "Erreur"
     },
     "instructions": {
       "title": "Comment ça marche ?",
+      "idle": "Appuyez sur le bouton pour commencer l'enregistrement",
+      "recording": "Expliquez le sujet à voix haute, puis appuyez pour arrêter",
+      "analyzing": "Nous analysons votre explication...",
       "step1": "Appuyez sur le bouton pour démarrer",
       "step2": "Expliquez le sujet à voix haute",
       "step3": "Recevez votre analyse instantanée"
@@ -287,6 +290,7 @@
     "hint": "Appuyez pour commencer l'enregistrement",
     "error": {
       "permission": "Permission microphone requise",
+      "microphone": "Erreur d'accès au microphone",
       "recording": "Erreur lors de l'enregistrement",
       "analysis": "Erreur lors de l'analyse"
     }
@@ -300,16 +304,25 @@
     },
     "analysis": {
       "valid": "Points corrects",
+      "correctPoints": "Points corrects",
       "corrections": "À corriger",
-      "missing": "Points manquants"
+      "missing": "Points manquants",
+      "missingElements": "Éléments manquants",
+      "noCorrectPoints": "Aucun point correct identifié",
+      "noCorrections": "Aucune correction nécessaire",
+      "noMissingElements": "Aucun élément manquant"
     },
     "transcription": {
       "title": "Transcription",
-      "empty": "Aucune transcription disponible"
+      "empty": "Aucune transcription disponible",
+      "copy": "Copier",
+      "copied": "Copié !"
     },
     "actions": {
       "retry": "Réessayer",
-      "done": "Terminer"
+      "done": "Terminer",
+      "newSession": "Nouvelle session",
+      "close": "Fermer"
     },
     "score": {
       "title": "Score",

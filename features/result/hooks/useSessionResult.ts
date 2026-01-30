@@ -2,12 +2,18 @@
  * @file useSessionResult.ts
  * @description Hook for fetching and managing session result/analysis data
  *
+ * FIXED:
+ * - Replaced useSessionStore (which doesn't exist) with useStore
+ * - Uses currentTopic from store to get session data
+ * - Properly accesses sessions from the topic's sessions array
+ *
  * Usage:
  * const { session, analysis, isLoading, error } = useSessionResult(sessionId);
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSessionStore } from '@/store';
+import { useStore, selectCurrentTopic } from '@/store';
+import type { Session as StoreSession } from '@/store';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -22,12 +28,14 @@ export interface SessionAnalysis {
 
 export interface Session {
     id: string;
-    topicId: string;
+    topicId?: string;
     transcription?: string;
     analysis?: SessionAnalysis;
     duration?: number;
     createdAt?: string;
     updatedAt?: string;
+    date?: string;
+    audioUri?: string;
 }
 
 export interface UseSessionResultReturn {
@@ -44,6 +52,29 @@ export interface UseSessionResultReturn {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convert store session to local session format
+ */
+function mapStoreSessionToSession(storeSession: StoreSession, topicId?: string): Session {
+    return {
+        id: storeSession.id,
+        topicId,
+        transcription: storeSession.transcription,
+        analysis: storeSession.analysis ? {
+            score: storeSession.analysis.score,
+            correctPoints: storeSession.analysis.correct_points,
+            corrections: storeSession.analysis.corrections,
+            missingElements: storeSession.analysis.missing_elements,
+        } : undefined,
+        date: storeSession.date,
+        audioUri: storeSession.audioUri,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -53,8 +84,8 @@ export function useSessionResult(sessionId: string | undefined): UseSessionResul
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Get session from store if available
-    const sessionStore = useSessionStore();
+    // ✅ FIX: Use the main store instead of non-existent useSessionStore
+    const currentTopic = useStore(selectCurrentTopic);
 
     // ─────────────────────────────────────────────────────────────────────────
     // FETCH SESSION DATA
@@ -71,18 +102,23 @@ export function useSessionResult(sessionId: string | undefined): UseSessionResul
         setError(null);
 
         try {
-            // First, try to get from store
-            const storedSession = sessionStore.getSessionById?.(sessionId);
+            // ✅ FIX: First, try to get session from currentTopic's sessions
+            if (currentTopic?.sessions) {
+                const storedSession = currentTopic.sessions.find(s => s.id === sessionId);
 
-            if (storedSession) {
-                setSession(storedSession);
-                setAnalysis(storedSession.analysis || null);
-                setIsLoading(false);
-                return;
+                if (storedSession) {
+                    const mappedSession = mapStoreSessionToSession(storedSession, currentTopic.id);
+                    setSession(mappedSession);
+                    setAnalysis(mappedSession.analysis || null);
+                    setIsLoading(false);
+                    return;
+                }
             }
 
             // If not in store, fetch from API
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/sessions/${sessionId}`);
+            const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/sessions/${sessionId}`
+            );
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch session: ${response.status}`);
@@ -99,7 +135,7 @@ export function useSessionResult(sessionId: string | undefined): UseSessionResul
         } finally {
             setIsLoading(false);
         }
-    }, [sessionId, sessionStore]);
+    }, [sessionId, currentTopic]);
 
     // ─────────────────────────────────────────────────────────────────────────
     // REFRESH FUNCTION
