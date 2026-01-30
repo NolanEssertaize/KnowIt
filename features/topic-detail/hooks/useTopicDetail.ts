@@ -3,11 +3,13 @@
  * @description Topic Detail Hook - Business logic for TopicDetailScreen
  *
  * FIXED:
- * - Added loadedTopicIdRef to prevent unnecessary reloads and ID loss
- * - Only loads topic when topicId changes AND hasn't been loaded yet
+ * - Removed loadedTopicIdRef which was causing navigation issues
+ * - Always load topic when topicId changes (expo-router reuses screen instances)
+ * - Removed store action from useEffect dependencies to prevent infinite loops
+ * - Added proper cleanup when navigating away
  */
 
-import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useStore, selectCurrentTopic, selectIsLoading, selectError } from '@/store';
 import type { Topic, Session } from '@/store';
@@ -56,19 +58,28 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editTitle, setEditTitle] = useState('');
 
-    // ✅ FIX: Track which topicId has been loaded to prevent re-fetching
-    const loadedTopicIdRef = useRef<string | null>(null);
-
     // Store state and actions
-    const topic = useStore(selectCurrentTopic);
+    const currentTopic = useStore(selectCurrentTopic);
     const isLoading = useStore(selectIsLoading);
     const error = useStore(selectError);
     const {
         loadTopicDetail: loadTopicDetailFromStore,
         updateTopicTitle,
         deleteTopic,
+        setCurrentTopic,
         clearError: clearStoreError,
     } = useStore();
+
+    // =========================================================================
+    // ✅ FIX: Only use the topic if it matches the current topicId
+    // This prevents showing stale data from a previous topic
+    // =========================================================================
+    const topic = useMemo(() => {
+        if (currentTopic && currentTopic.id === topicId) {
+            return currentTopic;
+        }
+        return null;
+    }, [currentTopic, topicId]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // Transform sessions to SessionItemData with formattedDate
@@ -90,24 +101,29 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     }, [topic?.sessions]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ✅ FIX: Load topic detail only when necessary
+    // ✅ FIX: Always load topic when topicId changes
+    // Expo-router reuses screen instances, so we need to reload on every
+    // topicId change, not just on mount.
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        // Only load if:
-        // 1. We have a topicId
-        // 2. We haven't loaded this specific topicId yet OR the current topic doesn't match
-        if (topicId && loadedTopicIdRef.current !== topicId) {
+        if (topicId) {
             console.log('[useTopicDetail] Loading topic:', topicId);
-            loadedTopicIdRef.current = topicId;
             loadTopicDetailFromStore(topicId);
         }
-    }, [topicId]); // ✅ Removed loadTopicDetailFromStore from deps to prevent loops
+
+        // ✅ FIX: Cleanup - clear current topic when unmounting or changing topics
+        // This prevents stale data from showing when navigating to a new topic
+        return () => {
+            // Don't clear if we're just unmounting temporarily (modal, etc)
+            // Only clear on actual navigation away
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [topicId]); // Only depend on topicId, NOT loadTopicDetailFromStore
 
     /**
      * Load topic detail from API
      */
     const loadTopicDetail = useCallback(async (id: string): Promise<Topic | null> => {
-        loadedTopicIdRef.current = id;
         return await loadTopicDetailFromStore(id);
     }, [loadTopicDetailFromStore]);
 

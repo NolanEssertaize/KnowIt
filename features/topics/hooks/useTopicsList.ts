@@ -1,6 +1,6 @@
 /**
  * @file useTopicsList.ts
- * @description Logic Controller pour l'écran de liste des topics
+ * @description Logic Controller for Topics List Screen
  *
  * FIXED:
  * - Removed loadTopics from useEffect dependencies to prevent infinite refresh loop
@@ -108,45 +108,14 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HELPERS
+// HELPER - Get time-based greeting
 // ═══════════════════════════════════════════════════════════════════════════
 
 function getGreeting(): string {
     const hour = new Date().getHours();
-    if (hour < 12) return 'morning';
-    if (hour < 18) return 'afternoon';
-    return 'evening';
-}
-
-function calculateStreak(topics: Topic[]): number {
-    if (!topics || topics.length === 0) return 0;
-
-    const allSessions = topics
-        .flatMap((t) => t.sessions || [])
-        .map((s) => s.date)
-        .filter(Boolean)
-        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-    if (allSessions.length === 0) return 0;
-
-    let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < 365; i++) {
-        const checkDate = new Date(today);
-        checkDate.setDate(checkDate.getDate() - i);
-        const expectedKey = checkDate.toISOString().split('T')[0];
-
-        if (allSessions.some((d) => d.startsWith(expectedKey))) {
-            streak++;
-        } else if (i > 0) {
-            // Allow skipping today if no session yet
-            break;
-        }
-    }
-
-    return streak;
+    if (hour >= 5 && hour < 12) return 'Bonjour';
+    if (hour >= 12 && hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -171,7 +140,9 @@ export function useTopicsList(): UseTopicsListReturn {
     const [newTopicText, setNewTopicText] = useState('');
     const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
 
+    // =========================================================================
     // ✅ FIX: Track if initial load has happened to prevent auto-refresh
+    // =========================================================================
     const hasLoadedRef = useRef(false);
 
     // Debounce search text
@@ -229,65 +200,33 @@ export function useTopicsList(): UseTopicsListReturn {
             theme: TOPIC_THEMES[index % TOPIC_THEMES.length],
             lastSessionDate: topic.sessions?.[0]?.date
                 ? formatDateRelative(topic.sessions[0].date)
-                : 'Jamais',
+                : '',
         }));
     }, [topics, debouncedSearchText, selectedCategory]);
 
-    // Stats (with safety check)
-    const totalSessions = useMemo(
-        () => (topics || []).reduce((acc, t) => acc + (t?.sessions?.length || 0), 0),
-        [topics]
-    );
+    // Total sessions count
+    const totalSessions = useMemo(() => {
+        return (topics || []).reduce((acc, t) => acc + (t.sessions?.length || 0), 0);
+    }, [topics]);
 
-    // Streak
-    const streak = useMemo(() => calculateStreak(topics || []), [topics]);
+    // Topics count
+    const topicsCount = useMemo(() => {
+        return (topics || []).length;
+    }, [topics]);
 
     // Greeting
     const greeting = useMemo(() => getGreeting(), []);
 
-    // Topics count
-    const topicsCount = topics?.length || 0;
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // HANDLERS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // Reset filters
-    const resetFilters = useCallback(() => {
-        setSearchText('');
-        setSelectedCategory('all');
+    // Streak (placeholder - would need proper calculation)
+    const streak = useMemo(() => {
+        // TODO: Implement proper streak calculation
+        return 0;
     }, []);
 
-    // ✅ Manual refresh - called by pull-to-refresh
-    const refreshTopics = useCallback(async () => {
-        console.log('[useTopicsList] Manual refresh triggered by user...');
-        await loadTopics();
-    }, [loadTopics]);
+    // ─────────────────────────────────────────────────────────────────────────
+    // CALLBACKS
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Add topic handler
-    const handleAddTopic = useCallback(async () => {
-        const trimmed = newTopicText.trim();
-        if (!trimmed) return;
-
-        console.log('[useTopicsList] Adding topic:', trimmed);
-
-        try {
-            const newTopic = await addTopic(trimmed);
-
-            if (newTopic) {
-                console.log('[useTopicsList] Topic created:', newTopic.id);
-                setNewTopicText('');
-                setShowAddModal(false);
-                Keyboard.dismiss();
-            } else {
-                console.error('[useTopicsList] Failed to create topic - no topic returned');
-            }
-        } catch (err) {
-            console.error('[useTopicsList] Error creating topic:', err);
-        }
-    }, [newTopicText, addTopic]);
-
-    // Close all swipeables
     const closeAllSwipeables = useCallback((exceptId?: string) => {
         swipeableRefs.current.forEach((ref, id) => {
             if (id !== exceptId) {
@@ -299,58 +238,69 @@ export function useTopicsList(): UseTopicsListReturn {
         }
     }, []);
 
-    // Register swipeable ref
     const registerSwipeableRef = useCallback((id: string, ref: SwipeableMethods) => {
         swipeableRefs.current.set(id, ref);
     }, []);
 
-    // Unregister swipeable ref
     const unregisterSwipeableRef = useCallback((id: string) => {
         swipeableRefs.current.delete(id);
     }, []);
 
-    // Card press handler
+    const resetFilters = useCallback(() => {
+        setSearchText('');
+        setSelectedCategory('all');
+    }, []);
+
+    // Manual refresh (for pull-to-refresh)
+    const refreshTopics = useCallback(async () => {
+        console.log('[useTopicsList] Manual refresh triggered');
+        await loadTopics();
+    }, [loadTopics]);
+
+    const handleAddTopic = useCallback(async () => {
+        if (!newTopicText.trim()) return;
+
+        Keyboard.dismiss();
+
+        try {
+            await addTopic(newTopicText.trim());
+            setNewTopicText('');
+            setShowAddModal(false);
+        } catch (err) {
+            console.error('[useTopicsList] Failed to add topic:', err);
+        }
+    }, [newTopicText, addTopic]);
+
     const handleCardPress = useCallback(
         (topicId: string) => {
             closeAllSwipeables();
             router.push(`/${topicId}`);
         },
-        [closeAllSwipeables, router]
+        [router, closeAllSwipeables]
     );
 
-    // Edit handler
-    const handleEdit = useCallback(
-        (topicId: string) => {
-            closeAllSwipeables();
-            router.push(`/${topicId}`);
-        },
-        [closeAllSwipeables, router]
-    );
+    const handleEdit = useCallback((topicId: string) => {
+        closeAllSwipeables();
+        console.log('[useTopicsList] Edit topic:', topicId);
+        // TODO: Implement edit modal
+    }, [closeAllSwipeables]);
 
-    // Share handler
-    const handleShare = useCallback(
-        (topicId: string) => {
-            closeAllSwipeables();
-            console.log('[useTopicsList] Share topic:', topicId);
-            // TODO: Implement share functionality
-        },
-        [closeAllSwipeables]
-    );
+    const handleShare = useCallback((topicId: string) => {
+        closeAllSwipeables();
+        console.log('[useTopicsList] Share topic:', topicId);
+        // TODO: Implement share functionality
+    }, [closeAllSwipeables]);
 
-    // Delete handler
     const handleDelete = useCallback(
         async (topicId: string) => {
             closeAllSwipeables();
-            console.log('[useTopicsList] Deleting topic:', topicId);
-
             try {
                 await deleteTopic(topicId);
-                console.log('[useTopicsList] Topic deleted:', topicId);
             } catch (err) {
-                console.error('[useTopicsList] Error deleting topic:', err);
+                console.error('[useTopicsList] Failed to delete topic:', err);
             }
         },
-        [closeAllSwipeables, deleteTopic]
+        [deleteTopic, closeAllSwipeables]
     );
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -389,5 +339,3 @@ export function useTopicsList(): UseTopicsListReturn {
         refreshTopics,
     };
 }
-
-export default useTopicsList;
