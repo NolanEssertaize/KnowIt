@@ -2,12 +2,9 @@
  * @file useTopicsList.ts
  * @description Logic Controller pour l'écran de liste des topics
  *
- * FIXES:
- * - Removed emoji from greeting (no emoji policy)
- * - Added safety filters to prevent crashes on undefined topics
- * - Added useEffect to load topics on mount for synchronization
- * - Added streak property for tracking consecutive days of study
- * - Uses corrected formatDateRelative from dateUtils for proper Today/Yesterday
+ * FIXED:
+ * - Added hasLoadedRef to prevent infinite refresh loop
+ * - Removed loadTopics from useEffect dependencies
  */
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
@@ -15,33 +12,24 @@ import { Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useStore, selectTopics, selectIsLoading, selectError } from '@/store/useStore';
-import type { Topic, TopicTheme, TopicCategory } from '@/types';
+import type { Topic } from '@/store';
 import { formatDateRelative } from '@/shared/utils/dateUtils';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTES
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const TOPIC_THEMES: TopicTheme[] = [
-    { icon: 'laptop', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-    { icon: 'brain', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-    { icon: 'chart-line', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-    { icon: 'palette', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-    { icon: 'flask', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-    { icon: 'book-open-variant', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
-];
-
-export const CATEGORIES: TopicCategory[] = [
-    { id: 'all', label: 'Tous', icon: 'view-grid' },
-    { id: 'recent', label: 'Récents', icon: 'clock-outline' },
-    { id: 'favorites', label: 'Favoris', icon: 'star-outline' },
-];
-
-const DEBOUNCE_DELAY = 300; // ms
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
+
+export interface TopicTheme {
+    icon: string;
+    color: string;
+    gradient: string[];
+}
+
+export interface TopicCategory {
+    id: string;
+    label: string;
+    icon: string;
+}
 
 export interface TopicItemData {
     topic: Topic;
@@ -80,6 +68,27 @@ export interface UseTopicsListReturn {
     resetFilters: () => void;
     refreshTopics: () => Promise<void>;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const TOPIC_THEMES: TopicTheme[] = [
+    { icon: 'laptop', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'brain', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'chart-line', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'palette', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'flask', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+    { icon: 'book-open-variant', color: '#FFFFFF', gradient: ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.35)'] },
+];
+
+export const CATEGORIES: TopicCategory[] = [
+    { id: 'all', label: 'Tous', icon: 'view-grid' },
+    { id: 'recent', label: 'Récents', icon: 'clock-outline' },
+    { id: 'favorites', label: 'Favoris', icon: 'star-outline' },
+];
+
+const DEBOUNCE_DELAY = 300;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CUSTOM HOOK - useDebounce
@@ -122,10 +131,8 @@ function calculateStreak(topics: Topic[]): number {
 
     if (allSessionDates.length === 0) return 0;
 
-    // Sort dates descending
     allSessionDates.sort((a, b) => b.getTime() - a.getTime());
 
-    // Calculate streak
     let streak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -168,26 +175,32 @@ export function useTopicsList(): UseTopicsListReturn {
     // Store actions
     const { addTopic, deleteTopic, loadTopics } = useStore();
 
-    // État local
+    // Local state
     const [searchText, setSearchText] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [showAddModal, setShowAddModal] = useState(false);
     const [newTopicText, setNewTopicText] = useState('');
     const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
 
-    // Debounce du texte de recherche
+    // ✅ FIX: Track if initial load has happened
+    const hasLoadedRef = useRef(false);
+
+    // Debounce search text
     const debouncedSearchText = useDebounce(searchText, DEBOUNCE_DELAY);
 
-    // Refs pour les swipeables
+    // Refs for swipeables
     const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
     // ─────────────────────────────────────────────────────────────────────────
-    // EFFECTS - Load topics on mount
+    // ✅ FIX: Load topics only ONCE on mount
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        console.log('[useTopicsList] Loading topics on mount...');
-        loadTopics();
-    }, [loadTopics]);
+        if (!hasLoadedRef.current) {
+            console.log('[useTopicsList] Loading topics on mount...');
+            hasLoadedRef.current = true;
+            loadTopics();
+        }
+    }, []); // ✅ Empty dependency array - only runs once
 
     // ─────────────────────────────────────────────────────────────────────────
     // MEMOIZED VALUES
@@ -197,7 +210,6 @@ export function useTopicsList(): UseTopicsListReturn {
         return debouncedSearchText.trim().length > 0 || selectedCategory !== 'all';
     }, [debouncedSearchText, selectedCategory]);
 
-    // FIXED: Greeting without emoji (no emoji policy)
     const greeting = useMemo(() => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Bonjour';
@@ -205,19 +217,18 @@ export function useTopicsList(): UseTopicsListReturn {
         return 'Bonsoir';
     }, []);
 
-    // Topics filtrés et enrichis
     const filteredTopics = useMemo((): TopicItemData[] => {
         if (!topics || !Array.isArray(topics)) return [];
 
         let result = topics.filter((t) => t && t.id);
 
-        // Filtre par recherche
+        // Filter by search
         if (debouncedSearchText.trim()) {
             const query = debouncedSearchText.toLowerCase();
             result = result.filter((t) => t.title && t.title.toLowerCase().includes(query));
         }
 
-        // Tri par catégorie
+        // Sort by category
         if (selectedCategory === 'recent') {
             result.sort((a, b) => {
                 const dateA = (a.sessions && a.sessions[0]?.date) || '';
@@ -226,7 +237,7 @@ export function useTopicsList(): UseTopicsListReturn {
             });
         }
 
-        // Enrichissement
+        // Enrich with theme and date
         return result.map((topic, index) => ({
             topic,
             theme: TOPIC_THEMES[index % TOPIC_THEMES.length],
@@ -236,13 +247,11 @@ export function useTopicsList(): UseTopicsListReturn {
         }));
     }, [topics, debouncedSearchText, selectedCategory]);
 
-    // Stats (with safety check)
     const totalSessions = useMemo(
         () => (topics || []).reduce((acc, t) => acc + (t?.sessions?.length || 0), 0),
         [topics]
     );
 
-    // Streak
     const streak = useMemo(() => calculateStreak(topics), [topics]);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -276,8 +285,8 @@ export function useTopicsList(): UseTopicsListReturn {
             } else {
                 console.error('[useTopicsList] Failed to create topic - no topic returned');
             }
-        } catch (error) {
-            console.error('[useTopicsList] Error creating topic:', error);
+        } catch (err) {
+            console.error('[useTopicsList] Error creating topic:', err);
         }
     }, [newTopicText, addTopic]);
 
@@ -307,7 +316,6 @@ export function useTopicsList(): UseTopicsListReturn {
         (topicId: string) => {
             console.log('Edit topic:', topicId);
             closeAllSwipeables();
-            // TODO: Implement edit
         },
         [closeAllSwipeables]
     );
@@ -316,7 +324,6 @@ export function useTopicsList(): UseTopicsListReturn {
         (topicId: string) => {
             console.log('Share topic:', topicId);
             closeAllSwipeables();
-            // TODO: Implement share
         },
         [closeAllSwipeables]
     );

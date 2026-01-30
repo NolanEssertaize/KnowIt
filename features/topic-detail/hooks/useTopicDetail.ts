@@ -2,16 +2,12 @@
  * @file useTopicDetail.ts
  * @description Topic Detail Hook - Business logic for TopicDetailScreen
  *
- * Pattern: MVVM - This hook serves as the ViewModel for topic detail view
- *
- * FIXES:
- * - Sessions are now transformed to SessionItemData with formattedDate
- * - Uses corrected formatSessionHistoryDate for proper Today/Yesterday display
- * - Added refreshSessions method
- * - Added handleSessionPress for navigation
+ * FIXED:
+ * - Added loadedTopicIdRef to prevent unnecessary reloads and ID loss
+ * - Only loads topic when topicId changes AND hasn't been loaded yet
  */
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useStore, selectCurrentTopic, selectIsLoading, selectError } from '@/store';
 import type { Topic, Session } from '@/store';
@@ -21,9 +17,6 @@ import { formatSessionHistoryDate } from '@/shared/utils/dateUtils';
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Session item data for FlatList rendering
- */
 export interface SessionItemData {
     session: Session;
     formattedDate: string;
@@ -63,6 +56,9 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editTitle, setEditTitle] = useState('');
 
+    // ✅ FIX: Track which topicId has been loaded to prevent re-fetching
+    const loadedTopicIdRef = useRef<string | null>(null);
+
     // Store state and actions
     const topic = useStore(selectCurrentTopic);
     const isLoading = useStore(selectIsLoading);
@@ -76,46 +72,47 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
 
     // ═══════════════════════════════════════════════════════════════════════
     // Transform sessions to SessionItemData with formattedDate
-    // Uses the corrected formatSessionHistoryDate from dateUtils
     // ═══════════════════════════════════════════════════════════════════════
     const sessions: SessionItemData[] = useMemo(() => {
         const rawSessions = topic?.sessions || [];
 
         return rawSessions
             .filter((session): session is Session => {
-                // Filter out undefined/null sessions
                 return session !== undefined && session !== null && typeof session.id === 'string';
             })
             .map((session) => ({
                 session,
-                // Use the corrected date formatting function
                 formattedDate: formatSessionHistoryDate(session.date),
             }))
             .sort((a, b) => {
-                // Sort by date descending (newest first)
                 return new Date(b.session.date).getTime() - new Date(a.session.date).getTime();
             });
     }, [topic?.sessions]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Load topic detail on mount or when topicId changes
+    // ✅ FIX: Load topic detail only when necessary
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (topicId) {
+        // Only load if:
+        // 1. We have a topicId
+        // 2. We haven't loaded this specific topicId yet OR the current topic doesn't match
+        if (topicId && loadedTopicIdRef.current !== topicId) {
             console.log('[useTopicDetail] Loading topic:', topicId);
+            loadedTopicIdRef.current = topicId;
             loadTopicDetailFromStore(topicId);
         }
-    }, [topicId, loadTopicDetailFromStore]);
+    }, [topicId]); // ✅ Removed loadTopicDetailFromStore from deps to prevent loops
 
     /**
      * Load topic detail from API
      */
     const loadTopicDetail = useCallback(async (id: string): Promise<Topic | null> => {
+        loadedTopicIdRef.current = id;
         return await loadTopicDetailFromStore(id);
     }, [loadTopicDetailFromStore]);
 
     /**
-     * Refresh current topic
+     * Refresh current topic (force reload)
      */
     const refreshTopic = useCallback(async () => {
         if (topicId) {
@@ -147,8 +144,8 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
         try {
             await updateTopicTitle(topic.id, editTitle);
             setIsEditModalVisible(false);
-        } catch (error) {
-            console.error('[useTopicDetail] Failed to update title:', error);
+        } catch (err) {
+            console.error('[useTopicDetail] Failed to update title:', err);
         }
     }, [topic, editTitle, updateTopicTitle]);
 
@@ -160,7 +157,6 @@ export function useTopicDetail(topicId: string): UseTopicDetailReturn {
 
         console.log('[useTopicDetail] Deleting topic:', topic.id);
         await deleteTopic(topic.id);
-        // Navigate back after deletion
         router.back();
     }, [topic, deleteTopic, router]);
 
